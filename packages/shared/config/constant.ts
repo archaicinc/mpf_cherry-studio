@@ -6,6 +6,7 @@ export const audioExts = ['.mp3', '.wav', '.ogg', '.flac', '.aac']
 export const documentExts = ['.pdf', '.doc', '.docx', '.pptx', '.xlsx', '.odt', '.odp', '.ods']
 export const thirdPartyApplicationExts = ['.draftsExport']
 export const bookExts = ['.epub']
+export const cadExts = ['.fcstd']
 
 export const API_SERVER_DEFAULTS = {
   HOST: '127.0.0.1',

@@ -5,7 +5,16 @@ import os from 'node:os'
 import path from 'node:path'
 
 import { loggerService } from '@logger'
-import { audioExts, documentExts, HOME_CHERRY_DIR, imageExts, MB, textExts, videoExts } from '@shared/config/constant'
+import {
+  audioExts,
+  cadExts,
+  documentExts,
+  HOME_CHERRY_DIR,
+  imageExts,
+  MB,
+  textExts,
+  videoExts
+} from '@shared/config/constant'
 import type { FileMetadata, FileType, NotesTreeNode } from '@types'
 import { FILE_TYPE } from '@types'
 import chardet from 'chardet'
@@ -25,6 +34,7 @@ function initFileTypeMap() {
   audioExts.forEach((ext) => fileTypeMap.set(ext, FILE_TYPE.AUDIO))
   textExts.forEach((ext) => fileTypeMap.set(ext, FILE_TYPE.TEXT))
   documentExts.forEach((ext) => fileTypeMap.set(ext, FILE_TYPE.DOCUMENT))
+  cadExts.forEach((ext) => fileTypeMap.set(ext, FILE_TYPE.CAD))
 }
 
 // 初始化映射表

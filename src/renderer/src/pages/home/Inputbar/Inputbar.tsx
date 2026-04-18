@@ -43,7 +43,7 @@ import {
 import type { MessageInputBaseParams } from '@renderer/types/newMessage'
 import { delay } from '@renderer/utils'
 import { getSendMessageShortcutLabel } from '@renderer/utils/input'
-import { documentExts, imageExts, textExts } from '@shared/config/constant'
+import { cadExts, documentExts, imageExts, textExts } from '@shared/config/constant'
 import { debounce } from 'lodash'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
@@ -196,7 +196,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
 
   const supportedExts = useMemo(() => {
     if (canAddImageFile && canAddTextFile) {
-      return [...imageExts, ...documentExts, ...textExts]
+      return [...imageExts, ...documentExts, ...textExts, ...cadExts]
     }
 
     if (canAddImageFile) {
@@ -204,7 +204,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
     }
 
     if (canAddTextFile) {
-      return [...documentExts, ...textExts]
+      return [...documentExts, ...textExts, ...cadExts]
     }
 
     return []

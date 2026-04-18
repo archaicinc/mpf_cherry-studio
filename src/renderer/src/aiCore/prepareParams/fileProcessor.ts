@@ -79,6 +79,14 @@ export async function convertFileBlockToTextPart(fileBlock: FileMessageBlock): P
     }
   }
 
+  // CAD files are binary; surface the absolute path so the model can invoke a CAD MCP tool.
+  if (file.type === FILE_TYPE.CAD) {
+    return {
+      type: 'text',
+      text: `[Attached CAD file: ${file.origin_name}]\nFile path: ${file.path}\nUse an available CAD MCP tool to read or analyze this file by its path.`
+    }
+  }
+
   return null
 }
 

@@ -69,6 +69,7 @@ export const FILE_TYPE = {
   AUDIO: 'audio',
   TEXT: 'text',
   DOCUMENT: 'document',
+  CAD: 'cad',
   OTHER: 'other'
 } as const
 

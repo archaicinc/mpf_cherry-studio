@@ -466,7 +466,15 @@ const api = {
   workflowTasks: {
     list: (): Promise<import('@shared/workflowTask').WorkflowTask[]> => ipcRenderer.invoke(IpcChannel.WorkflowTasks_List),
     get: (id: string): Promise<import('@shared/workflowTask').WorkflowTask> =>
-      ipcRenderer.invoke(IpcChannel.WorkflowTasks_Get, id)
+      ipcRenderer.invoke(IpcChannel.WorkflowTasks_Get, id),
+    run: (runId: string, request: import('@shared/inference').InferenceRequest): Promise<void> =>
+      ipcRenderer.invoke(IpcChannel.WorkflowTasks_Run, runId, request),
+    onRunChunk: (callback: (chunk: import('@shared/inference').WorkflowRunChunk) => void): (() => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, chunk: import('@shared/inference').WorkflowRunChunk) =>
+        callback(chunk)
+      ipcRenderer.on(IpcChannel.WorkflowTasks_RunChunk, listener)
+      return () => ipcRenderer.off(IpcChannel.WorkflowTasks_RunChunk, listener)
+    }
   },
   cherryin: {
     saveToken: (accessToken: string, refreshToken?: string) =>

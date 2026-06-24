@@ -1,5 +1,7 @@
 import { loggerService } from '@logger'
 import { MPF_SERVER_CONFIG } from '@shared/config/constant'
+import type { InferenceRequest, InferenceStreamEvent } from '@shared/inference'
+import { IpcChannel } from '@shared/IpcChannel'
 import type { WorkflowTask } from '@shared/workflowTask'
 import { net, safeStorage } from 'electron'
 import fs from 'fs'
@@ -83,6 +85,72 @@ class OperatorAuthService {
 
   public fetchWorkflowTask = async (_: Electron.IpcMainInvokeEvent, id: string): Promise<WorkflowTask> => {
     return (await this.authedGet(`/me/workflow-tasks/${encodeURIComponent(id)}`)) as WorkflowTask
+  }
+
+  /**
+   * Run a workflow task through the inference gateway, streaming the result.
+   * Done from main (net.fetch, no CORS); each text delta is forwarded to the
+   * calling renderer via WorkflowTasks_RunChunk. Resolves when the stream ends.
+   */
+  public runWorkflowTask = async (
+    event: Electron.IpcMainInvokeEvent,
+    runId: string,
+    request: InferenceRequest
+  ): Promise<void> => {
+    if (!MPF_SERVER_CONFIG.INFERENCE_STREAM_URL) {
+      throw new OperatorAuthError('Inference endpoint is not configured')
+    }
+    const tokens = await this.readTokens()
+    if (!tokens?.idToken) {
+      throw new OperatorAuthError('Not signed in')
+    }
+
+    let response: Response
+    try {
+      response = await net.fetch(MPF_SERVER_CONFIG.INFERENCE_STREAM_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokens.idToken}` },
+        body: JSON.stringify(request)
+      })
+    } catch (error) {
+      logger.error('Inference request failed:', error as Error)
+      throw new OperatorAuthError('Could not reach the inference server')
+    }
+    if (!response.ok || !response.body) {
+      throw new OperatorAuthError(`HTTP ${response.status}`)
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      // Server emits newline-delimited JSON events.
+      let newline: number
+      while ((newline = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, newline).trim()
+        buffer = buffer.slice(newline + 1)
+        if (!line) continue
+        const parsed = this.parseStreamLine(line)
+        if (parsed?.type === 'delta') {
+          if (!event.sender.isDestroyed()) {
+            event.sender.send(IpcChannel.WorkflowTasks_RunChunk, { runId, text: parsed.text })
+          }
+        } else if (parsed?.type === 'error') {
+          throw new OperatorAuthError(parsed.message)
+        }
+      }
+    }
+  }
+
+  private parseStreamLine = (line: string): InferenceStreamEvent | null => {
+    try {
+      return JSON.parse(line) as InferenceStreamEvent
+    } catch {
+      return null
+    }
   }
 
   private readTokens = async (): Promise<StoredTokens | null> => {

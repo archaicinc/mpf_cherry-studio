@@ -144,6 +144,8 @@ export enum IpcChannel {
   OperatorAuth_GetStatus = 'operator-auth:get-status',
   WorkflowTasks_List = 'workflow-tasks:list',
   WorkflowTasks_Get = 'workflow-tasks:get',
+  WorkflowTasks_Run = 'workflow-tasks:run',
+  WorkflowTasks_RunChunk = 'workflow-tasks:run-chunk',
 
   // CherryIN OAuth
   CherryIN_SaveToken = 'cherryin:save-token',

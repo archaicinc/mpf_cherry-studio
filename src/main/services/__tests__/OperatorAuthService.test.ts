@@ -115,4 +115,11 @@ describe('OperatorAuthService', () => {
     )
     expect(task.workflowTaskId).toBe('wf_2')
   })
+
+  it('runWorkflowTask throws when the inference endpoint is not configured', async () => {
+    // MPF_SERVER_CONFIG.INFERENCE_STREAM_URL defaults to '' until filled post-deploy
+    const request = { model: 'claude-sonnet', type: 'workflow_task' as const, messages: [] }
+    await expect(service.runWorkflowTask(evt, 'r1', request)).rejects.toThrow('not configured')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
 })

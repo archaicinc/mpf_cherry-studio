@@ -6069,6 +6069,9 @@
     },
     "task": {
       "not_found": "Workflow task not found.",
+      "result": "Result",
+      "run": "Run",
+      "running": "Running…",
       "tab": "Workflow"
     }
   }

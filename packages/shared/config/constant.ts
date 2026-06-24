@@ -508,7 +508,10 @@ export const CHERRYIN_CONFIG = {
 // authenticates operators by POSTing credentials to this server, which holds
 // all Cognito/AWS specifics — the client never talks to Cognito directly.
 export const MPF_SERVER_CONFIG = {
-  BASE_URL: 'https://i6wmu0e2zi.execute-api.ap-northeast-1.amazonaws.com'
+  BASE_URL: 'https://i6wmu0e2zi.execute-api.ap-northeast-1.amazonaws.com',
+  // Inference-gateway streaming Lambda Function URL (separate host from BASE_URL).
+  // Fill from the `MpfApiStack.InferenceStreamUrl` CDK output after deploy.
+  INFERENCE_STREAM_URL: ''
 }
 
 export const APP_NAME = 'Cherry Studio'

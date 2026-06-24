@@ -3024,6 +3024,34 @@
       "updating": "更新中..."
     }
   },
+  "operatorLogin": {
+    "email": {
+      "label": "電子郵件",
+      "required": "請輸入電子郵件"
+    },
+    "error": {
+      "generic": "登入失敗，請重試。"
+    },
+    "logout": {
+      "confirm": {
+        "content": "登出後需要重新登入才能繼續使用。",
+        "title": "確認登出？"
+      },
+      "label": "登出"
+    },
+    "newPassword": {
+      "hint": "請設定永久密碼以完成登入。",
+      "label": "新密碼",
+      "required": "請輸入新密碼",
+      "submit": "設定密碼並登入"
+    },
+    "password": {
+      "label": "密碼",
+      "required": "請輸入密碼"
+    },
+    "submit": "登入",
+    "title": "操作員登入"
+  },
   "ovms": {
     "action": {
       "install": "安裝",

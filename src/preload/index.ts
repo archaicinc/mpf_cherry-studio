@@ -456,6 +456,13 @@ const api = {
     logout: () => ipcRenderer.invoke(IpcChannel.Copilot_Logout),
     getUser: (token: string) => ipcRenderer.invoke(IpcChannel.Copilot_GetUser, token)
   },
+  operatorAuth: {
+    login: (email: string, password: string) => ipcRenderer.invoke(IpcChannel.OperatorAuth_Login, email, password),
+    submitNewPassword: (email: string, newPassword: string, session: string) =>
+      ipcRenderer.invoke(IpcChannel.OperatorAuth_SubmitNewPassword, email, newPassword, session),
+    logout: () => ipcRenderer.invoke(IpcChannel.OperatorAuth_Logout),
+    getStatus: () => ipcRenderer.invoke(IpcChannel.OperatorAuth_GetStatus)
+  },
   cherryin: {
     saveToken: (accessToken: string, refreshToken?: string) =>
       ipcRenderer.invoke(IpcChannel.CherryIN_SaveToken, accessToken, refreshToken),

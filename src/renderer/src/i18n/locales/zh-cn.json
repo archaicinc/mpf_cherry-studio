@@ -3024,6 +3024,34 @@
       "updating": "更新中..."
     }
   },
+  "operatorLogin": {
+    "email": {
+      "label": "邮箱",
+      "required": "请输入邮箱"
+    },
+    "error": {
+      "generic": "登录失败，请重试。"
+    },
+    "logout": {
+      "confirm": {
+        "content": "退出后需要重新登录才能继续使用。",
+        "title": "确认退出登录？"
+      },
+      "label": "退出登录"
+    },
+    "newPassword": {
+      "hint": "请设置永久密码以完成登录。",
+      "label": "新密码",
+      "required": "请输入新密码",
+      "submit": "设置密码并登录"
+    },
+    "password": {
+      "label": "密码",
+      "required": "请输入密码"
+    },
+    "submit": "登录",
+    "title": "操作员登录"
+  },
   "ovms": {
     "action": {
       "install": "安装",

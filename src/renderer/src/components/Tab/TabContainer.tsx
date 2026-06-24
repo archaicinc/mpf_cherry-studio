@@ -5,6 +5,7 @@ import HorizontalScrollContainer from '@renderer/components/HorizontalScrollCont
 import { isLinux, isMac } from '@renderer/config/constant'
 import { allMinApps } from '@renderer/config/minapps'
 import { useTheme } from '@renderer/context/ThemeProvider'
+import { useAuthState } from '@renderer/hooks/useAuthState'
 import { useFullscreen } from '@renderer/hooks/useFullscreen'
 import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 import { useMinapps } from '@renderer/hooks/useMinapps'
@@ -26,6 +27,7 @@ import {
   Home,
   Languages,
   LayoutGrid,
+  LogOut,
   Monitor,
   Moon,
   MousePointerClick,
@@ -133,6 +135,7 @@ const TabsContainer: React.FC<TabsContainerProps> = ({ children }) => {
   const { minapps } = useMinapps()
   const { useSystemTitleBar } = useSettings()
   const { t } = useTranslation()
+  const { logout } = useAuthState()
 
   const getTabId = (path: string): string => {
     if (path === '/') return 'home'
@@ -218,6 +221,20 @@ const TabsContainer: React.FC<TabsContainerProps> = ({ children }) => {
     navigate(lastSettingsPath)
   }
 
+  const handleLogout = () => {
+    window.modal.confirm({
+      title: t('operatorLogin.logout.confirm.title'),
+      content: t('operatorLogin.logout.confirm.content'),
+      okText: t('operatorLogin.logout.label'),
+      cancelText: t('common.cancel'),
+      centered: true,
+      async onOk() {
+        await logout()
+        await window.api.reload()
+      }
+    })
+  }
+
   const handleTabClick = (tab: Tab) => {
     hideMinappPopup()
     navigate(tab.path)
@@ -295,6 +312,11 @@ const TabsContainer: React.FC<TabsContainerProps> = ({ children }) => {
               ) : (
                 <Monitor size={16} />
               )}
+            </ThemeButton>
+          </Tooltip>
+          <Tooltip title={t('operatorLogin.logout.label')} mouseEnterDelay={0.8} placement="bottom">
+            <ThemeButton onClick={handleLogout}>
+              <LogOut size={16} />
             </ThemeButton>
           </Tooltip>
           <SettingsButton onClick={handleSettingsClick} $active={activeTabId === 'settings'}>

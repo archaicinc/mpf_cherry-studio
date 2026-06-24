@@ -463,6 +463,11 @@ const api = {
     logout: () => ipcRenderer.invoke(IpcChannel.OperatorAuth_Logout),
     getStatus: () => ipcRenderer.invoke(IpcChannel.OperatorAuth_GetStatus)
   },
+  workflowTasks: {
+    list: (): Promise<import('@shared/workflowTask').WorkflowTask[]> => ipcRenderer.invoke(IpcChannel.WorkflowTasks_List),
+    get: (id: string): Promise<import('@shared/workflowTask').WorkflowTask> =>
+      ipcRenderer.invoke(IpcChannel.WorkflowTasks_Get, id)
+  },
   cherryin: {
     saveToken: (accessToken: string, refreshToken?: string) =>
       ipcRenderer.invoke(IpcChannel.CherryIN_SaveToken, accessToken, refreshToken),

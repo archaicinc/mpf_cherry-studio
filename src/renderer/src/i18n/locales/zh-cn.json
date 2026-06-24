@@ -6061,5 +6061,15 @@
     "quit": "退出",
     "show_window": "显示窗口",
     "visualization": "可视化"
+  },
+  "workflow": {
+    "launchpad": {
+      "empty": "尚未为你分配工作流任务。",
+      "title": "工作流任务"
+    },
+    "task": {
+      "not_found": "未找到工作流任务。",
+      "tab": "工作流"
+    }
   }
 }

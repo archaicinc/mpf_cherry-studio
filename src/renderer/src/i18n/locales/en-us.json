@@ -6061,5 +6061,15 @@
     "quit": "Quit",
     "show_window": "Show Window",
     "visualization": "Visualization"
+  },
+  "workflow": {
+    "launchpad": {
+      "empty": "No workflow tasks are assigned to you yet.",
+      "title": "Workflow Tasks"
+    },
+    "task": {
+      "not_found": "Workflow task not found.",
+      "tab": "Workflow"
+    }
   }
 }

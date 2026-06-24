@@ -1,5 +1,6 @@
 import { loggerService } from '@logger'
 import { MPF_SERVER_CONFIG } from '@shared/config/constant'
+import type { WorkflowTask } from '@shared/workflowTask'
 import { net, safeStorage } from 'electron'
 import fs from 'fs'
 import path from 'path'
@@ -72,6 +73,48 @@ class OperatorAuthService {
     } catch {
       // No token file means there's nothing to clear.
     }
+  }
+
+  /** Workflow tasks the logged-in operator may run (admins get all). */
+  public fetchWorkflowTasks = async (): Promise<WorkflowTask[]> => {
+    const data = (await this.authedGet('/me/workflow-tasks')) as { items?: WorkflowTask[] } | null
+    return data?.items ?? []
+  }
+
+  public fetchWorkflowTask = async (_: Electron.IpcMainInvokeEvent, id: string): Promise<WorkflowTask> => {
+    return (await this.authedGet(`/me/workflow-tasks/${encodeURIComponent(id)}`)) as WorkflowTask
+  }
+
+  private readTokens = async (): Promise<StoredTokens | null> => {
+    try {
+      const encrypted = await fs.promises.readFile(this.tokenFilePath)
+      return JSON.parse(safeStorage.decryptString(encrypted)) as StoredTokens
+    } catch {
+      return null
+    }
+  }
+
+  private authedGet = async (apiPath: string): Promise<unknown> => {
+    const tokens = await this.readTokens()
+    if (!tokens?.idToken) {
+      throw new OperatorAuthError('Not signed in')
+    }
+    let response: Response
+    try {
+      response = await net.fetch(`${MPF_SERVER_CONFIG.BASE_URL}${apiPath}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${tokens.idToken}` }
+      })
+    } catch (error) {
+      logger.error(`Request to ${apiPath} failed:`, error as Error)
+      throw new OperatorAuthError('Could not reach the server')
+    }
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+      const message = (data as { error?: { message?: string } } | null)?.error?.message ?? `HTTP ${response.status}`
+      throw new OperatorAuthError(message)
+    }
+    return data
   }
 
   private handleAuthResponse = async (data: unknown): Promise<LoginResult> => {

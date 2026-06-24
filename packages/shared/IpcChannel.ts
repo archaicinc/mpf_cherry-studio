@@ -142,6 +142,8 @@ export enum IpcChannel {
   OperatorAuth_SubmitNewPassword = 'operator-auth:submit-new-password',
   OperatorAuth_Logout = 'operator-auth:logout',
   OperatorAuth_GetStatus = 'operator-auth:get-status',
+  WorkflowTasks_List = 'workflow-tasks:list',
+  WorkflowTasks_Get = 'workflow-tasks:get',
 
   // CherryIN OAuth
   CherryIN_SaveToken = 'cherryin:save-token',

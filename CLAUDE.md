@@ -35,13 +35,13 @@ Only investigate CI failures by reading the logs, not by re-running checks local
 When creating an Issue, you MUST use the `gh-create-issue` skill.
 If the skill is unavailable, directly read `.agents/skills/gh-create-issue/SKILL.md` and follow it manually.
 
-### Branch Strategy (Effective April 3, 2026)
+### Branch Strategy
 
-> **IMPORTANT**: The `main` branch is now under **code freeze**. Only critical bug fixes submitted via `hotfix/*` branches are accepted. Fix PRs must be minimal in scope and must not include any refactoring code.
+This repo is the **`archaicinc/mpf_cherry-studio`** product fork of `CherryHQ/cherry-studio`. It is NOT the upstream repo, so upstream's contributor rules do not apply here.
+
+> **IMPORTANT**: Product work targets **`main`** (the fork's default branch, which carries our product commits). Develop on a `feature/*` branch and open a PR against `main`. There is **no `v2` branch** — ignore any older "main is frozen, use v2" guidance.
 >
-> All new features, refactoring, and optimizations should be developed on the **`v2` branch**. We welcome every developer to actively participate in v2 development!
->
-> The `v2` branch will only accept new feature submissions after all current features have been fully refactored.
+> **Staying mergeable with upstream**: absorb upstream changes by **merging** `upstream/main` (remote `upstream` = `CherryHQ/cherry-studio`, fetch-only) into our `main` — never rebase our `main` onto upstream, and never `gh repo sync --force` (both would discard our product commits). Do the catch-up merge on a `sync/upstream-<date>` branch and PR it. Keep product edits isolated (wire through `apiServer`/`mcpServers` layers, avoid forking core chat logic) so these merges stay cheap.
 
 ## Development Commands
 
@@ -165,14 +165,14 @@ Slices (redux-persist enabled):
 | `shortcuts` | Keyboard shortcuts |
 | `tabs` | Tab management |
 
-> **BLOCKED**: Do not add new Redux slices or change existing state shape until v2.0.0.
+> **AVOID**: Do not add new Redux slices or change existing state shape — upstream is refactoring this surface, so new slices make merges painful. Use existing state or non-Redux storage (e.g. localStorage/main-process) instead.
 
 ### Database Layer
 
 - **IndexedDB** (Dexie): `src/renderer/src/databases/index.ts`
   - Tables: `files`, `topics`, `settings`, `knowledge_notes`, `translate_history`, `quick_phrases`, `message_blocks`, `translate_languages`
   - Schema versioned with upgrade functions (`upgradeToV5`, `upgradeToV7`, `upgradeToV8`)
-  - **BLOCKED**: Do not modify schema until v2.0.0.
+  - **AVOID**: Do not modify the schema — upstream is refactoring it, and divergent schema changes break merges.
 - **SQLite** (Drizzle ORM + LibSQL): `src/main/services/agents/`
   - Used for the agents subsystem
   - DB path: `{userData}/Data/agents.db` (e.g., on macOS: `~/Library/Application Support/CherryStudioDev/Data/agents.db` in dev, `~/Library/Application Support/CherryStudio/Data/agents.db` in prod)
@@ -300,12 +300,9 @@ Several dependencies have patches in `patches/` — be careful when upgrading:
 
 ## Important Notes
 
-### V2 Refactoring in Progress
+### Upstream's V2 refactor markers
 
-The `main` branch is under code freeze. All development has moved to the `v2` branch.
-
-- **`main` branch**: Only accepts critical bug fixes via `hotfix/*` branches. Minimal changes, no refactoring.
-- **`v2` branch**: All new features, refactoring, and optimizations go here.
+Upstream (`CherryHQ/cherry-studio`) is mid-refactor and marks certain files as off-limits for feature changes. In this fork, **work targets `main` via `feature/*` PRs** (see Branch Strategy above) — there is no local `v2` branch — but we still respect upstream's blocked-file markers to keep merges clean.
 
 Files marked with the following header are **blocked for feature changes**:
 

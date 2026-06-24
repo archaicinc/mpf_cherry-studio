@@ -3,11 +3,14 @@ import { ResetIcon } from '@renderer/components/Icons'
 import { HStack } from '@renderer/components/Layout'
 import TextBadge from '@renderer/components/TextBadge'
 import { isLinux, isMac, THEME_COLOR_PRESETS } from '@renderer/config/constant'
+import { CONTROLLABLE_NAV_ITEMS } from '@renderer/config/navVisibility'
 import { DEFAULT_SIDEBAR_ICONS } from '@renderer/config/sidebar'
 import { useTheme } from '@renderer/context/ThemeProvider'
+import { useNavVisibility } from '@renderer/hooks/useNavVisibility'
 import { useNavbarPosition, useSettings } from '@renderer/hooks/useSettings'
 import { useTimer } from '@renderer/hooks/useTimer'
 import useUserTheme from '@renderer/hooks/useUserTheme'
+import { getSidebarIconLabel } from '@renderer/i18n/label'
 import { useAppDispatch } from '@renderer/store'
 import type { AssistantIconType } from '@renderer/store/settings'
 import {
@@ -22,7 +25,7 @@ import { ThemeMode } from '@renderer/types'
 import { Button, ColorPicker, Segmented, Select, Switch, Tooltip } from 'antd'
 import { Minus, Monitor, Moon, Plus, Sun } from 'lucide-react'
 import type { FC } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
@@ -76,6 +79,7 @@ const DisplaySettings: FC = () => {
   const { navbarPosition, setNavbarPosition } = useNavbarPosition()
   const { theme, settedTheme } = useTheme()
   const { t } = useTranslation()
+  const { isHidden, setHidden } = useNavVisibility()
   const dispatch = useAppDispatch()
   const { setTimeoutTimer } = useTimer()
   const [currentZoom, setCurrentZoom] = useState(1.0)
@@ -311,6 +315,21 @@ const DisplaySettings: FC = () => {
             ]}
           />
         </SettingRow>
+      </SettingGroup>
+      <SettingGroup theme={theme}>
+        <SettingTitle>{t('settings.display.itemVisibility.title')}</SettingTitle>
+        <SettingDivider />
+        {CONTROLLABLE_NAV_ITEMS.map((item, index) => (
+          <Fragment key={item}>
+            {index > 0 && <SettingDivider />}
+            <SettingRow>
+              <SettingRowTitle>
+                {item === 'theme' ? t('settings.theme.title') : getSidebarIconLabel(item)}
+              </SettingRowTitle>
+              <Switch checked={!isHidden(item)} onChange={(checked) => setHidden(item, !checked)} />
+            </SettingRow>
+          </Fragment>
+        ))}
       </SettingGroup>
       <SettingGroup theme={theme}>
         <SettingTitle>{t('settings.display.zoom.title')}</SettingTitle>

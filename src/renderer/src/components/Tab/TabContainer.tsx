@@ -9,6 +9,7 @@ import { useAuthState } from '@renderer/hooks/useAuthState'
 import { useFullscreen } from '@renderer/hooks/useFullscreen'
 import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 import { useMinapps } from '@renderer/hooks/useMinapps'
+import { useNavVisibility } from '@renderer/hooks/useNavVisibility'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { getThemeModeLabel, getTitleLabel } from '@renderer/i18n/label'
 import UpdateAppButton from '@renderer/pages/home/components/UpdateAppButton'
@@ -123,6 +124,21 @@ const getTabIcon = (
 let lastSettingsPath = '/settings/provider'
 const specialTabs = ['launchpad', 'settings']
 
+// Maps a tab id to the nav-visibility key it belongs to, so hidden items
+// (e.g. the default Agents tab) are also dropped from the top tab bar.
+const TAB_ID_TO_NAV_KEY: Record<string, string> = {
+  agents: 'agents',
+  store: 'store',
+  paintings: 'paintings',
+  translate: 'translate',
+  apps: 'minapp',
+  knowledge: 'knowledge',
+  files: 'files',
+  code: 'code_tools',
+  notes: 'notes',
+  openclaw: 'openclaw'
+}
+
 const TabsContainer: React.FC<TabsContainerProps> = ({ children }) => {
   const location = useLocation()
   const navigate = useNavigate()
@@ -136,6 +152,7 @@ const TabsContainer: React.FC<TabsContainerProps> = ({ children }) => {
   const { useSystemTitleBar } = useSettings()
   const { t } = useTranslation()
   const { logout } = useAuthState()
+  const { hidden, isHidden } = useNavVisibility()
 
   const getTabId = (path: string): string => {
     if (path === '/') return 'home'
@@ -240,7 +257,10 @@ const TabsContainer: React.FC<TabsContainerProps> = ({ children }) => {
     navigate(tab.path)
   }
 
-  const visibleTabs = useMemo(() => tabs.filter((tab) => !specialTabs.includes(tab.id)), [tabs])
+  const visibleTabs = useMemo(
+    () => tabs.filter((tab) => !specialTabs.includes(tab.id) && !hidden.has(TAB_ID_TO_NAV_KEY[tab.id] ?? '')),
+    [tabs, hidden]
+  )
 
   const { onSortEnd } = useDndReorder<Tab>({
     originalList: tabs,
@@ -300,20 +320,22 @@ const TabsContainer: React.FC<TabsContainerProps> = ({ children }) => {
         </HorizontalScrollContainer>
         <RightButtonsContainer style={{ paddingRight: isLinux && useSystemTitleBar ? '12px' : undefined }}>
           <UpdateAppButton />
-          <Tooltip
-            title={t('settings.theme.title') + ': ' + getThemeModeLabel(settedTheme)}
-            mouseEnterDelay={0.8}
-            placement="bottom">
-            <ThemeButton onClick={toggleTheme}>
-              {settedTheme === ThemeMode.dark ? (
-                <Moon size={16} />
-              ) : settedTheme === ThemeMode.light ? (
-                <Sun size={16} />
-              ) : (
-                <Monitor size={16} />
-              )}
-            </ThemeButton>
-          </Tooltip>
+          {!isHidden('theme') && (
+            <Tooltip
+              title={t('settings.theme.title') + ': ' + getThemeModeLabel(settedTheme)}
+              mouseEnterDelay={0.8}
+              placement="bottom">
+              <ThemeButton onClick={toggleTheme}>
+                {settedTheme === ThemeMode.dark ? (
+                  <Moon size={16} />
+                ) : settedTheme === ThemeMode.light ? (
+                  <Sun size={16} />
+                ) : (
+                  <Monitor size={16} />
+                )}
+              </ThemeButton>
+            </Tooltip>
+          )}
           <Tooltip title={t('operatorLogin.logout.label')} mouseEnterDelay={0.8} placement="bottom">
             <ThemeButton onClick={handleLogout}>
               <LogOut size={16} />

@@ -8,6 +8,7 @@ import { useFullscreen } from '@renderer/hooks/useFullscreen'
 import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 import { useMinapps } from '@renderer/hooks/useMinapps'
 import useNavBackgroundColor from '@renderer/hooks/useNavBackgroundColor'
+import { useNavVisibility } from '@renderer/hooks/useNavVisibility'
 import { modelGenerating, useRuntime } from '@renderer/hooks/useRuntime'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { getSidebarIconLabel, getThemeModeLabel } from '@renderer/i18n/label'
@@ -52,6 +53,7 @@ const Sidebar: FC = () => {
   const { theme, settedTheme, toggleTheme } = useTheme()
   const avatar = useAvatar()
   const { t } = useTranslation()
+  const { isHidden } = useNavVisibility()
 
   const onEditUser = () => UserPopup.show()
 
@@ -109,17 +111,19 @@ const Sidebar: FC = () => {
         )}
       </MainMenusContainer>
       <Menus>
-        <Tooltip title={t('settings.theme.title') + ': ' + getThemeModeLabel(settedTheme)} placement="right">
-          <Icon theme={theme} onClick={toggleTheme}>
-            {settedTheme === ThemeMode.dark ? (
-              <Moon size={20} className="icon" />
-            ) : settedTheme === ThemeMode.light ? (
-              <Sun size={20} className="icon" />
-            ) : (
-              <Monitor size={20} className="icon" />
-            )}
-          </Icon>
-        </Tooltip>
+        {!isHidden('theme') && (
+          <Tooltip title={t('settings.theme.title') + ': ' + getThemeModeLabel(settedTheme)} placement="right">
+            <Icon theme={theme} onClick={toggleTheme}>
+              {settedTheme === ThemeMode.dark ? (
+                <Moon size={20} className="icon" />
+              ) : settedTheme === ThemeMode.light ? (
+                <Sun size={20} className="icon" />
+              ) : (
+                <Monitor size={20} className="icon" />
+              )}
+            </Icon>
+          </Tooltip>
+        )}
         <Tooltip title={t('operatorLogin.logout.label')} mouseEnterDelay={0.8} placement="right">
           <Icon theme={theme} onClick={onLogout}>
             <LogOut size={20} className="icon" />
@@ -148,6 +152,7 @@ const MainMenus: FC = () => {
   const { minappShow } = useRuntime()
   const navigate = useNavigate()
   const { theme } = useTheme()
+  const { isHidden } = useNavVisibility()
 
   const isRoute = (path: string): string => (pathname === path && !minappShow ? 'active' : '')
   const isRoutes = (path: string): string => (pathname.startsWith(path) && path !== '/' && !minappShow ? 'active' : '')
@@ -180,25 +185,27 @@ const MainMenus: FC = () => {
     openclaw: '/openclaw'
   }
 
-  return sidebarIcons.visible.map((icon) => {
-    const path = pathMap[icon]
-    const isActive = path === '/' ? isRoute(path) : isRoutes(path)
+  return sidebarIcons.visible
+    .filter((icon) => !isHidden(icon))
+    .map((icon) => {
+      const path = pathMap[icon]
+      const isActive = path === '/' ? isRoute(path) : isRoutes(path)
 
-    return (
-      <Tooltip key={icon} title={getSidebarIconLabel(icon)} mouseEnterDelay={0.8} placement="right">
-        <StyledLink
-          onClick={async () => {
-            hideMinappPopup()
-            await modelGenerating()
-            navigate(path)
-          }}>
-          <Icon theme={theme} className={isActive}>
-            {iconMap[icon]}
-          </Icon>
-        </StyledLink>
-      </Tooltip>
-    )
-  })
+      return (
+        <Tooltip key={icon} title={getSidebarIconLabel(icon)} mouseEnterDelay={0.8} placement="right">
+          <StyledLink
+            onClick={async () => {
+              hideMinappPopup()
+              await modelGenerating()
+              navigate(path)
+            }}>
+            <Icon theme={theme} className={isActive}>
+              {iconMap[icon]}
+            </Icon>
+          </StyledLink>
+        </Tooltip>
+      )
+    })
 }
 
 const Container = styled.div<{ $isFullscreen: boolean }>`

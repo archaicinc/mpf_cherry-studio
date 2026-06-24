@@ -4633,6 +4633,9 @@
         "select": "选择字体",
         "title": "字体设置"
       },
+      "itemVisibility": {
+        "title": "项目显隐"
+      },
       "navbar": {
         "position": {
           "label": "导航栏位置",

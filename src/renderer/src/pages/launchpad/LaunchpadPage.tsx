@@ -1,6 +1,7 @@
 import { OpenClawIcon } from '@renderer/components/Icons/SVGIcon'
 import App from '@renderer/components/MinApp/MinApp'
 import { useMinapps } from '@renderer/hooks/useMinapps'
+import { useNavVisibility } from '@renderer/hooks/useNavVisibility'
 import { useRuntime } from '@renderer/hooks/useRuntime'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { Code, FileSearch, Folder, Languages, LayoutGrid, NotepadText, Palette, Sparkle } from 'lucide-react'
@@ -16,60 +17,70 @@ const LaunchpadPage: FC = () => {
   const { defaultPaintingProvider } = useSettings()
   const { pinned } = useMinapps()
   const { openedKeepAliveMinapps } = useRuntime()
+  const { isHidden } = useNavVisibility()
 
   const appMenuItems = [
     {
       icon: <LayoutGrid size={32} className="icon" />,
       text: t('title.apps'),
       path: '/apps',
+      navKey: 'minapp',
       bgColor: 'linear-gradient(135deg, #8B5CF6, #A855F7)' // 小程序：紫色，代表多功能和灵活性
     },
     {
       icon: <FileSearch size={32} className="icon" />,
       text: t('title.knowledge'),
       path: '/knowledge',
+      navKey: 'knowledge',
       bgColor: 'linear-gradient(135deg, #10B981, #34D399)' // 知识库：翠绿色，代表生长和知识
     },
     {
       icon: <Palette size={32} className="icon" />,
       text: t('title.paintings'),
       path: `/paintings/${defaultPaintingProvider}`,
+      navKey: 'paintings',
       bgColor: 'linear-gradient(135deg, #EC4899, #F472B6)' // 绘画：活力粉色，代表创造力和艺术
     },
     {
       icon: <Sparkle size={32} className="icon" />,
       text: t('title.store'),
       path: '/store',
+      navKey: 'store',
       bgColor: 'linear-gradient(135deg, #6366F1, #4F46E5)' // AI助手：靛蓝渐变，代表智能和科技
     },
     {
       icon: <Languages size={32} className="icon" />,
       text: t('title.translate'),
       path: '/translate',
+      navKey: 'translate',
       bgColor: 'linear-gradient(135deg, #06B6D4, #0EA5E9)' // 翻译：明亮的青蓝色，代表沟通和流畅
     },
     {
       icon: <Folder size={32} className="icon" />,
       text: t('title.files'),
       path: '/files',
+      navKey: 'files',
       bgColor: 'linear-gradient(135deg, #F59E0B, #FBBF24)' // 文件：金色，代表资源和重要性
     },
     {
       icon: <Code size={32} className="icon" />,
       text: t('title.code'),
       path: '/code',
+      navKey: 'code_tools',
       bgColor: 'linear-gradient(135deg, #1F2937, #374151)' // Code CLI：高级暗黑色，代表专业和技术
     },
     {
       icon: <OpenClawIcon className="icon" />,
       text: t('title.openclaw'),
       path: '/openclaw',
+      navKey: 'openclaw',
       bgColor: 'linear-gradient(135deg, #EF4444, #B91C1C)' // OpenClaw：红色渐变，代表龙虾的颜色
     },
     {
       icon: <NotepadText size={32} className="icon" />,
       text: t('title.notes'),
       path: '/notes',
+      navKey: 'notes',
       bgColor: 'linear-gradient(135deg, #F97316, #FB923C)' // 笔记：橙色，代表活力和清晰思路
     }
   ]
@@ -95,14 +106,16 @@ const LaunchpadPage: FC = () => {
         <Section>
           <SectionTitle>{t('launchpad.apps')}</SectionTitle>
           <Grid>
-            {appMenuItems.map((item) => (
-              <AppIcon key={item.path} onClick={() => navigate(item.path)}>
-                <IconContainer>
-                  <IconWrapper bgColor={item.bgColor}>{item.icon}</IconWrapper>
-                </IconContainer>
-                <AppName>{item.text}</AppName>
-              </AppIcon>
-            ))}
+            {appMenuItems
+              .filter((item) => !isHidden(item.navKey))
+              .map((item) => (
+                <AppIcon key={item.path} onClick={() => navigate(item.path)}>
+                  <IconContainer>
+                    <IconWrapper bgColor={item.bgColor}>{item.icon}</IconWrapper>
+                  </IconContainer>
+                  <AppName>{item.text}</AppName>
+                </AppIcon>
+              ))}
           </Grid>
         </Section>
 

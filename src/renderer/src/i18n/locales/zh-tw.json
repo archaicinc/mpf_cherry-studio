@@ -4633,6 +4633,9 @@
         "select": "選擇字型",
         "title": "字型設定"
       },
+      "itemVisibility": {
+        "title": "項目顯示"
+      },
       "navbar": {
         "position": {
           "label": "導覽列位置",

@@ -4633,6 +4633,9 @@
         "select": "Select Font",
         "title": "Font Settings"
       },
+      "itemVisibility": {
+        "title": "Item Visibility"
+      },
       "navbar": {
         "position": {
           "label": "Navbar Position",

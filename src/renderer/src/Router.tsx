@@ -8,6 +8,7 @@ import Sidebar from './components/app/Sidebar'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import TabsContainer from './components/Tab/TabContainer'
 import NavigationHandler from './handler/NavigationHandler'
+import { useAuthState } from './hooks/useAuthState'
 import { useOnboardingState } from './hooks/useOnboardingState'
 import { useNavbarPosition } from './hooks/useSettings'
 import AgentPage from './pages/agents/AgentPage'
@@ -16,6 +17,7 @@ import FilesPage from './pages/files/FilesPage'
 import HomePage from './pages/home/HomePage'
 import KnowledgePage from './pages/knowledge/KnowledgePage'
 import LaunchpadPage from './pages/launchpad/LaunchpadPage'
+import { LoginPage } from './pages/login'
 import MinAppPage from './pages/minapps/MinAppPage'
 import MinAppsPage from './pages/minapps/MinAppsPage'
 import NotesPage from './pages/notes/NotesPage'
@@ -28,6 +30,7 @@ import TranslatePage from './pages/translate/TranslatePage'
 
 const Router: FC = () => {
   const { onboardingCompleted, completeOnboarding } = useOnboardingState()
+  const { isAuthenticated, markAuthenticated } = useAuthState()
   const { navbarPosition } = useNavbarPosition()
 
   const routes = useMemo(() => {
@@ -55,6 +58,10 @@ const Router: FC = () => {
 
   if (!onboardingCompleted) {
     return <OnboardingPage onComplete={completeOnboarding} />
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage onSuccess={markAuthenticated} />
   }
 
   if (navbarPosition === 'left') {

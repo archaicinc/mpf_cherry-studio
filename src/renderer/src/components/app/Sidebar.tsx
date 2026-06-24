@@ -2,6 +2,7 @@ import EmojiAvatar from '@renderer/components/Avatar/EmojiAvatar'
 import { isMac } from '@renderer/config/constant'
 import { UserAvatar } from '@renderer/config/env'
 import { useTheme } from '@renderer/context/ThemeProvider'
+import { useAuthState } from '@renderer/hooks/useAuthState'
 import useAvatar from '@renderer/hooks/useAvatar'
 import { useFullscreen } from '@renderer/hooks/useFullscreen'
 import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
@@ -19,6 +20,7 @@ import {
   Folder,
   Languages,
   LayoutGrid,
+  LogOut,
   MessageSquare,
   Monitor,
   Moon,
@@ -52,6 +54,22 @@ const Sidebar: FC = () => {
   const { t } = useTranslation()
 
   const onEditUser = () => UserPopup.show()
+
+  const { logout } = useAuthState()
+
+  const onLogout = () => {
+    window.modal.confirm({
+      title: t('operatorLogin.logout.confirm.title'),
+      content: t('operatorLogin.logout.confirm.content'),
+      okText: t('operatorLogin.logout.label'),
+      cancelText: t('common.cancel'),
+      centered: true,
+      async onOk() {
+        await logout()
+        await window.api.reload()
+      }
+    })
+  }
 
   const backgroundColor = useNavBackgroundColor()
 
@@ -100,6 +118,11 @@ const Sidebar: FC = () => {
             ) : (
               <Monitor size={20} className="icon" />
             )}
+          </Icon>
+        </Tooltip>
+        <Tooltip title={t('operatorLogin.logout.label')} mouseEnterDelay={0.8} placement="right">
+          <Icon theme={theme} onClick={onLogout}>
+            <LogOut size={20} className="icon" />
           </Icon>
         </Tooltip>
         <Tooltip title={t('settings.title')} mouseEnterDelay={0.8} placement="right">

@@ -137,6 +137,12 @@ export enum IpcChannel {
   Copilot_Logout = 'copilot:logout',
   Copilot_GetUser = 'copilot:get-user',
 
+  // MPF operator authentication (server-mediated Cognito login)
+  OperatorAuth_Login = 'operator-auth:login',
+  OperatorAuth_SubmitNewPassword = 'operator-auth:submit-new-password',
+  OperatorAuth_Logout = 'operator-auth:logout',
+  OperatorAuth_GetStatus = 'operator-auth:get-status',
+
   // CherryIN OAuth
   CherryIN_SaveToken = 'cherryin:save-token',
   CherryIN_HasToken = 'cherryin:has-token',

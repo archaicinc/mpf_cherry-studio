@@ -3024,6 +3024,34 @@
       "updating": "Updating..."
     }
   },
+  "operatorLogin": {
+    "email": {
+      "label": "Email",
+      "required": "Please enter your email"
+    },
+    "error": {
+      "generic": "Sign in failed. Please try again."
+    },
+    "logout": {
+      "confirm": {
+        "content": "You will need to sign in again to continue.",
+        "title": "Sign out?"
+      },
+      "label": "Sign out"
+    },
+    "newPassword": {
+      "hint": "Set a permanent password to finish signing in.",
+      "label": "New password",
+      "required": "Please enter a new password",
+      "submit": "Set password and sign in"
+    },
+    "password": {
+      "label": "Password",
+      "required": "Please enter your password"
+    },
+    "submit": "Sign in",
+    "title": "Operator sign in"
+  },
   "ovms": {
     "action": {
       "install": "Install",

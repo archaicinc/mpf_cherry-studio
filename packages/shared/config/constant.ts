@@ -504,4 +504,11 @@ export const CHERRYIN_CONFIG = {
   SCOPES: 'openid profile email offline_access balance:read usage:read tokens:read tokens:write'
 }
 
+// MPF management server (operator login + inference gateway). The desktop app
+// authenticates operators by POSTing credentials to this server, which holds
+// all Cognito/AWS specifics — the client never talks to Cognito directly.
+export const MPF_SERVER_CONFIG = {
+  BASE_URL: 'https://i6wmu0e2zi.execute-api.ap-northeast-1.amazonaws.com'
+}
+
 export const APP_NAME = 'Cherry Studio'

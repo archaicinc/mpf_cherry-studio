@@ -65,6 +65,7 @@ import * as NutstoreService from './services/NutstoreService'
 import ObsidianVaultService from './services/ObsidianVaultService'
 import { ocrService } from './services/ocr/OcrService'
 import { openClawService } from './services/OpenClawService'
+import OperatorAuthService from './services/OperatorAuthService'
 import { isOvmsSupported } from './services/OvmsManager'
 import powerMonitorService from './services/PowerMonitorService'
 import { proxyManager } from './services/ProxyManager'
@@ -866,6 +867,15 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   ipcMain.handle(IpcChannel.Copilot_GetToken, CopilotService.getToken.bind(CopilotService))
   ipcMain.handle(IpcChannel.Copilot_Logout, CopilotService.logout.bind(CopilotService))
   ipcMain.handle(IpcChannel.Copilot_GetUser, CopilotService.getUser.bind(CopilotService))
+
+  // MPF operator authentication
+  ipcMain.handle(IpcChannel.OperatorAuth_Login, OperatorAuthService.login.bind(OperatorAuthService))
+  ipcMain.handle(
+    IpcChannel.OperatorAuth_SubmitNewPassword,
+    OperatorAuthService.submitNewPassword.bind(OperatorAuthService)
+  )
+  ipcMain.handle(IpcChannel.OperatorAuth_Logout, OperatorAuthService.logout.bind(OperatorAuthService))
+  ipcMain.handle(IpcChannel.OperatorAuth_GetStatus, OperatorAuthService.getStatus.bind(OperatorAuthService))
 
   // CherryIN OAuth
   ipcMain.handle(IpcChannel.CherryIN_SaveToken, CherryINOAuthService.saveToken.bind(CherryINOAuthService))

@@ -1,7 +1,7 @@
 import { loggerService } from '@logger'
 import type { InferenceRequest } from '@shared/inference'
 import type { WorkflowTask, WorkflowTaskField, WorkflowTaskFieldType } from '@shared/workflowTask'
-import { Button, Input, InputNumber, Select, Switch } from 'antd'
+import { Button, DatePicker, Input, InputNumber, Select, Switch } from 'antd'
 import { Play, Plus, Trash2, Upload } from 'lucide-react'
 import type { FC } from 'react'
 import { useState } from 'react'
@@ -123,6 +123,42 @@ const WorkflowBuilderPage: FC = () => {
 
   const canUpload = name.trim().length > 0 && fields.every((f) => f.key.trim() && f.label.trim())
 
+  const setSample = (key: string, value: string) => setSampleValues((prev) => ({ ...prev, [key]: value }))
+
+  // Test-value input matches the field's type, like the real run page.
+  const renderTestControl = (field: BuilderField) => {
+    const value = sampleValues[field.key] ?? ''
+    switch (field.type) {
+      case 'textarea':
+        return (
+          <Input.TextArea rows={3} value={value} placeholder={field.key} onChange={(e) => setSample(field.key, e.target.value)} />
+        )
+      case 'select': {
+        const opts = field.optionsText.split(',').map((o) => o.trim()).filter(Boolean)
+        return (
+          <Select
+            style={{ width: '100%' }}
+            value={value || undefined}
+            placeholder={field.key}
+            options={opts.map((o) => ({ label: o, value: o }))}
+            onChange={(v) => setSample(field.key, v)}
+          />
+        )
+      }
+      case 'datepicker':
+        return (
+          <DatePicker
+            style={{ width: '100%' }}
+            onChange={(_, dateString) =>
+              setSample(field.key, Array.isArray(dateString) ? (dateString[0] ?? '') : dateString)
+            }
+          />
+        )
+      default:
+        return <Input value={value} placeholder={field.key} onChange={(e) => setSample(field.key, e.target.value)} />
+    }
+  }
+
   return (
     <Container>
       <Title>{t('workflow.builder.title')}</Title>
@@ -226,11 +262,7 @@ const WorkflowBuilderPage: FC = () => {
           {fields.map((field, index) => (
             <TestRow key={index}>
               <TestLabel>{field.label || field.key || `#${index + 1}`}</TestLabel>
-              <Input
-                value={sampleValues[field.key] ?? ''}
-                onChange={(e) => setSampleValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                placeholder={field.key}
-              />
+              <TestControl>{renderTestControl(field)}</TestControl>
             </TestRow>
           ))}
         </Section>
@@ -328,14 +360,20 @@ const ParamField = styled.div`
 
 const TestRow = styled.div`
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
 `
 
 const TestLabel = styled.div`
   width: 160px;
+  flex-shrink: 0;
+  padding-top: 6px;
   font-size: 13px;
   color: var(--color-text-secondary);
+`
+
+const TestControl = styled.div`
+  flex: 1;
 `
 
 const Actions = styled.div`

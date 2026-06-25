@@ -100,21 +100,10 @@ class OperatorAuthService {
     if (!MPF_SERVER_CONFIG.INFERENCE_STREAM_URL) {
       throw new OperatorAuthError('Inference endpoint is not configured')
     }
-    const tokens = await this.readTokens()
-    if (!tokens?.idToken) {
-      throw new OperatorAuthError('Not signed in')
-    }
 
-    let response: Response
-    try {
-      response = await net.fetch(MPF_SERVER_CONFIG.INFERENCE_STREAM_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokens.idToken}` },
-        body: JSON.stringify(request)
-      })
-    } catch (error) {
-      logger.error('Inference request failed:', error as Error)
-      throw new OperatorAuthError('Could not reach the inference server')
+    let response = await this.postStream(request, await this.getValidIdToken())
+    if (response.status === 401) {
+      response = await this.postStream(request, await this.forceRefresh())
     }
     if (!response.ok || !response.body) {
       throw new OperatorAuthError(`HTTP ${response.status}`)
@@ -145,6 +134,19 @@ class OperatorAuthService {
     }
   }
 
+  private postStream = async (request: InferenceRequest, idToken: string): Promise<Response> => {
+    try {
+      return await net.fetch(MPF_SERVER_CONFIG.INFERENCE_STREAM_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify(request)
+      })
+    } catch (error) {
+      logger.error('Inference request failed:', error as Error)
+      throw new OperatorAuthError('Could not reach the inference server')
+    }
+  }
+
   private parseStreamLine = (line: string): InferenceStreamEvent | null => {
     try {
       return JSON.parse(line) as InferenceStreamEvent
@@ -162,20 +164,23 @@ class OperatorAuthService {
     }
   }
 
-  private authedGet = async (apiPath: string): Promise<unknown> => {
-    const tokens = await this.readTokens()
-    if (!tokens?.idToken) {
-      throw new OperatorAuthError('Not signed in')
-    }
-    let response: Response
+  private doGet = async (apiPath: string, idToken: string): Promise<Response> => {
     try {
-      response = await net.fetch(`${MPF_SERVER_CONFIG.BASE_URL}${apiPath}`, {
+      return await net.fetch(`${MPF_SERVER_CONFIG.BASE_URL}${apiPath}`, {
         method: 'GET',
-        headers: { Authorization: `Bearer ${tokens.idToken}` }
+        headers: { Authorization: `Bearer ${idToken}` }
       })
     } catch (error) {
       logger.error(`Request to ${apiPath} failed:`, error as Error)
       throw new OperatorAuthError('Could not reach the server')
+    }
+  }
+
+  private authedGet = async (apiPath: string): Promise<unknown> => {
+    let response = await this.doGet(apiPath, await this.getValidIdToken())
+    if (response.status === 401) {
+      // Token rejected despite the proactive check — refresh once and retry.
+      response = await this.doGet(apiPath, await this.forceRefresh())
     }
     const data = await response.json().catch(() => null)
     if (!response.ok) {
@@ -197,7 +202,7 @@ class OperatorAuthService {
     return { authenticated: true }
   }
 
-  private persistTokens = async (tokens: AuthTokens): Promise<void> => {
+  private persistTokens = async (tokens: AuthTokens): Promise<StoredTokens> => {
     const bundle: StoredTokens = { ...tokens, obtainedAt: Date.now() }
     const encrypted = safeStorage.encryptString(JSON.stringify(bundle))
     const dir = path.dirname(this.tokenFilePath)
@@ -205,6 +210,44 @@ class OperatorAuthService {
       await fs.promises.mkdir(dir, { recursive: true })
     }
     await fs.promises.writeFile(this.tokenFilePath, encrypted)
+    return bundle
+  }
+
+  /** Exchange the stored refresh token for a fresh idToken via the server. */
+  private refreshTokens = async (stored: StoredTokens): Promise<StoredTokens> => {
+    if (!stored.refreshToken) {
+      throw new OperatorAuthError('Session expired, please sign in again')
+    }
+    const data = (await this.post('/auth/refresh', { refreshToken: stored.refreshToken })) as Partial<AuthTokens>
+    if (!data?.idToken || !data?.accessToken) {
+      throw new OperatorAuthError('Session expired, please sign in again')
+    }
+    // Cognito does not reissue the refresh token, so carry the existing one forward.
+    return this.persistTokens({ ...(data as AuthTokens), refreshToken: stored.refreshToken })
+  }
+
+  /** A valid idToken, refreshing proactively when the current one is near expiry. */
+  private getValidIdToken = async (): Promise<string> => {
+    const stored = await this.readTokens()
+    if (!stored?.idToken) {
+      throw new OperatorAuthError('Not signed in')
+    }
+    const expiresAt = stored.obtainedAt + stored.expiresIn * 1000
+    // Refresh a minute early to absorb clock skew; if no refresh token, let the
+    // server be the judge (a 401 then triggers a clear "sign in again").
+    if (Date.now() < expiresAt - 60_000 || !stored.refreshToken) {
+      return stored.idToken
+    }
+    return (await this.refreshTokens(stored)).idToken
+  }
+
+  /** Force a refresh after a 401 (e.g. server-side invalidation or clock skew). */
+  private forceRefresh = async (): Promise<string> => {
+    const stored = await this.readTokens()
+    if (!stored) {
+      throw new OperatorAuthError('Not signed in')
+    }
+    return (await this.refreshTokens(stored)).idToken
   }
 
   private post = async (apiPath: string, body: unknown): Promise<unknown> => {

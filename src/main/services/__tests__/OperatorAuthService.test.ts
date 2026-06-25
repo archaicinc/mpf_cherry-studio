@@ -116,6 +116,33 @@ describe('OperatorAuthService', () => {
     expect(task.workflowTaskId).toBe('wf_2')
   })
 
+  it('refreshes a near-expired idToken before fetching', async () => {
+    readFile.mockResolvedValue(
+      Buffer.from(JSON.stringify({ idToken: 'old', refreshToken: 'reftok', expiresIn: 3600, obtainedAt: 0 }))
+    )
+    fetchMock
+      .mockResolvedValueOnce(response(200, { accessToken: 'a2', idToken: 'new', expiresIn: 3600, tokenType: 'Bearer' }))
+      .mockResolvedValueOnce(response(200, { items: [] }))
+    await service.fetchWorkflowTasks()
+    expect(fetchMock).toHaveBeenCalledWith(`${BASE}/auth/refresh`, expect.objectContaining({ method: 'POST' }))
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      `${BASE}/me/workflow-tasks`,
+      expect.objectContaining({ headers: { Authorization: 'Bearer new' } })
+    )
+  })
+
+  it('refreshes and retries once when a request returns 401', async () => {
+    readFile.mockResolvedValue(
+      Buffer.from(JSON.stringify({ idToken: 'cur', refreshToken: 'reftok', expiresIn: 3600, obtainedAt: Date.now() }))
+    )
+    fetchMock
+      .mockResolvedValueOnce(response(401, {}))
+      .mockResolvedValueOnce(response(200, { accessToken: 'a', idToken: 'new', expiresIn: 3600, tokenType: 'Bearer' }))
+      .mockResolvedValueOnce(response(200, { items: [] }))
+    expect(await service.fetchWorkflowTasks()).toEqual([])
+    expect(fetchMock).toHaveBeenCalledWith(`${BASE}/auth/refresh`, expect.objectContaining({ method: 'POST' }))
+  })
+
   it('runWorkflowTask throws when the inference endpoint is not configured', async () => {
     // MPF_SERVER_CONFIG.INFERENCE_STREAM_URL defaults to '' until filled post-deploy
     const request = { model: 'claude-sonnet', type: 'workflow_task' as const, messages: [] }

@@ -16,6 +16,16 @@ const logger = loggerService.withContext('WorkflowBuilderPage')
 const MODEL_OPTIONS = ['claude-sonnet', 'claude-haiku']
 const FIELD_TYPES: WorkflowTaskFieldType[] = ['text', 'textarea', 'datepicker', 'select']
 
+// While editing, `select` options are kept as the raw comma-separated text the
+// admin types (so commas type naturally); they're parsed to an array on upload.
+interface BuilderField {
+  key: string
+  label: string
+  type: WorkflowTaskFieldType
+  required: boolean
+  optionsText: string
+}
+
 /** Admin-only builder: define a workflow task, test it against the gateway, and
  * upload it to the server. */
 const WorkflowBuilderPage: FC = () => {
@@ -24,7 +34,7 @@ const WorkflowBuilderPage: FC = () => {
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [fields, setFields] = useState<WorkflowTaskField[]>([])
+  const [fields, setFields] = useState<BuilderField[]>([])
   const [systemPrompt, setSystemPrompt] = useState('')
   const [promptTemplate, setPromptTemplate] = useState('')
   const [model, setModel] = useState('claude-sonnet')
@@ -40,19 +50,29 @@ const WorkflowBuilderPage: FC = () => {
   const [uploadError, setUploadError] = useState<string | null>(null)
 
   const addField = () =>
-    setFields((prev) => [...prev, { key: '', label: '', type: 'text', required: false }])
+    setFields((prev) => [...prev, { key: '', label: '', type: 'text', required: false, optionsText: '' }])
 
-  const updateField = (index: number, patch: Partial<WorkflowTaskField>) =>
+  const updateField = (index: number, patch: Partial<BuilderField>) =>
     setFields((prev) => prev.map((f, i) => (i === index ? { ...f, ...patch } : f)))
 
   const removeField = (index: number) => setFields((prev) => prev.filter((_, i) => i !== index))
 
   const inferenceConfig = { maxTokens, temperature, topP }
 
+  const toTaskField = (f: BuilderField): WorkflowTaskField => ({
+    key: f.key.trim(),
+    label: f.label.trim(),
+    type: f.type,
+    required: f.required,
+    ...(f.type === 'select'
+      ? { options: f.optionsText.split(',').map((o) => o.trim()).filter(Boolean) }
+      : {})
+  })
+
   const buildTaskBody = (): Partial<WorkflowTask> => ({
     name: name.trim(),
     description: description.trim(),
-    fields,
+    fields: fields.map(toTaskField),
     promptTemplate,
     systemPrompt,
     model,
@@ -148,10 +168,8 @@ const WorkflowBuilderPage: FC = () => {
             {field.type === 'select' && (
               <Input
                 style={{ width: 180 }}
-                value={(field.options ?? []).join(', ')}
-                onChange={(e) =>
-                  updateField(index, { options: e.target.value.split(',').map((o) => o.trim()).filter(Boolean) })
-                }
+                value={field.optionsText}
+                onChange={(e) => updateField(index, { optionsText: e.target.value })}
                 placeholder="option1, option2"
               />
             )}

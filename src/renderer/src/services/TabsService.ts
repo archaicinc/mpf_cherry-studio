@@ -1,4 +1,5 @@
 import { loggerService } from '@logger'
+import { getHiddenNavItems, isTabHidden } from '@renderer/config/navVisibility'
 import store from '@renderer/store'
 import { removeTab, setActiveTab } from '@renderer/store/tabs'
 import type { MinAppType } from '@renderer/types'
@@ -49,18 +50,25 @@ class TabsService {
     // 如果关闭的是当前激活的标签页，需要切换到其他标签页
     if (tabId === activeTabId) {
       const remainingTabs = tabs.filter((tab) => tab.id !== tabId)
-      const lastTab = remainingTabs[remainingTabs.length - 1]
+      // Prefer the last *visible* tab; never land on a hidden one (e.g. agents
+      // when it's hidden via Item Visibility). 'home' is always present and
+      // cannot be hidden, so it's the natural fallback.
+      const hidden = getHiddenNavItems()
+      const target =
+        [...remainingTabs].reverse().find((tab) => !isTabHidden(tab.id, hidden)) ??
+        remainingTabs.find((tab) => tab.id === 'home') ??
+        remainingTabs[remainingTabs.length - 1]
 
-      store.dispatch(setActiveTab(lastTab.id))
+      store.dispatch(setActiveTab(target.id))
 
       // 使用 NavigationService 导航到新的标签页
       if (NavigationService.navigate) {
-        NavigationService.navigate(lastTab.path)
+        NavigationService.navigate(target.path)
       } else {
         logger.warn('Navigation service not ready, will navigate on next render')
         setTimeout(() => {
           if (NavigationService.navigate) {
-            NavigationService.navigate(lastTab.path)
+            NavigationService.navigate(target.path)
           }
         }, 100)
       }

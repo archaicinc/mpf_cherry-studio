@@ -4,6 +4,7 @@ import {
   CONTROLLABLE_NAV_ITEMS,
   getHiddenNavItems,
   isNavItemHidden,
+  isTabHidden,
   setNavItemHidden,
   subscribeNavVisibility
 } from '../navVisibility'
@@ -47,5 +48,14 @@ describe('navVisibility', () => {
     expect(CONTROLLABLE_NAV_ITEMS).toContain('theme')
     expect(CONTROLLABLE_NAV_ITEMS).toContain('agents')
     expect(CONTROLLABLE_NAV_ITEMS).not.toContain('assistants')
+  })
+
+  it('isTabHidden maps tab ids to nav keys (incl. apps->minapp, code->code_tools)', () => {
+    expect(isTabHidden('agents', new Set(['agents']))).toBe(true)
+    expect(isTabHidden('apps', new Set(['minapp']))).toBe(true)
+    expect(isTabHidden('code', new Set(['code_tools']))).toBe(true)
+    expect(isTabHidden('agents', new Set())).toBe(false)
+    // home has no nav key and can never be hidden
+    expect(isTabHidden('home', new Set(['agents']))).toBe(false)
   })
 })

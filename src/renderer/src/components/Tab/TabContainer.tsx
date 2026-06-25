@@ -4,6 +4,7 @@ import { Sortable, useDndReorder } from '@renderer/components/dnd'
 import HorizontalScrollContainer from '@renderer/components/HorizontalScrollContainer'
 import { isLinux, isMac } from '@renderer/config/constant'
 import { allMinApps } from '@renderer/config/minapps'
+import { isTabHidden } from '@renderer/config/navVisibility'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useAuthState } from '@renderer/hooks/useAuthState'
 import { useFullscreen } from '@renderer/hooks/useFullscreen'
@@ -129,21 +130,6 @@ const getTabIcon = (
 
 let lastSettingsPath = '/settings/provider'
 const specialTabs = ['launchpad', 'workflow-launchpad', 'settings']
-
-// Maps a tab id to the nav-visibility key it belongs to, so hidden items
-// (e.g. the default Agents tab) are also dropped from the top tab bar.
-const TAB_ID_TO_NAV_KEY: Record<string, string> = {
-  agents: 'agents',
-  store: 'store',
-  paintings: 'paintings',
-  translate: 'translate',
-  apps: 'minapp',
-  knowledge: 'knowledge',
-  files: 'files',
-  code: 'code_tools',
-  notes: 'notes',
-  openclaw: 'openclaw'
-}
 
 const TabsContainer: React.FC<TabsContainerProps> = ({ children }) => {
   const location = useLocation()
@@ -276,7 +262,7 @@ const TabsContainer: React.FC<TabsContainerProps> = ({ children }) => {
   }
 
   const visibleTabs = useMemo(
-    () => tabs.filter((tab) => !specialTabs.includes(tab.id) && !hidden.has(TAB_ID_TO_NAV_KEY[tab.id] ?? '')),
+    () => tabs.filter((tab) => !specialTabs.includes(tab.id) && !isTabHidden(tab.id, hidden)),
     [tabs, hidden]
   )
 

@@ -79,12 +79,37 @@ class OperatorAuthService {
 
   /** Workflow tasks the logged-in operator may run (admins get all). */
   public fetchWorkflowTasks = async (): Promise<WorkflowTask[]> => {
-    const data = (await this.authedGet('/me/workflow-tasks')) as { items?: WorkflowTask[] } | null
+    const data = (await this.authedRequest('GET', '/me/workflow-tasks')) as { items?: WorkflowTask[] } | null
     return data?.items ?? []
   }
 
   public fetchWorkflowTask = async (_: Electron.IpcMainInvokeEvent, id: string): Promise<WorkflowTask> => {
-    return (await this.authedGet(`/me/workflow-tasks/${encodeURIComponent(id)}`)) as WorkflowTask
+    return (await this.authedRequest('GET', `/me/workflow-tasks/${encodeURIComponent(id)}`)) as WorkflowTask
+  }
+
+  /** Create (and upload) a workflow task. Admin-only — the server enforces it. */
+  public createWorkflowTask = async (
+    _: Electron.IpcMainInvokeEvent,
+    body: Partial<WorkflowTask>
+  ): Promise<WorkflowTask> => {
+    return (await this.authedRequest('POST', '/me/workflow-tasks', body)) as WorkflowTask
+  }
+
+  /** Whether the signed-in operator is an admin (from the idToken's groups). */
+  public isAdmin = async (): Promise<boolean> => {
+    const tokens = await this.readTokens()
+    return tokens?.idToken ? this.tokenGroups(tokens.idToken).includes('admin') : false
+  }
+
+  private tokenGroups = (idToken: string): string[] => {
+    try {
+      const payload = idToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+      const claims = JSON.parse(Buffer.from(payload, 'base64').toString('utf-8'))
+      const groups = (claims as { 'cognito:groups'?: unknown })['cognito:groups']
+      return Array.isArray(groups) ? (groups as string[]) : []
+    } catch {
+      return []
+    }
   }
 
   /**
@@ -164,11 +189,20 @@ class OperatorAuthService {
     }
   }
 
-  private doGet = async (apiPath: string, idToken: string): Promise<Response> => {
+  private doRequest = async (
+    method: string,
+    apiPath: string,
+    idToken: string,
+    body?: unknown
+  ): Promise<Response> => {
     try {
       return await net.fetch(`${MPF_SERVER_CONFIG.BASE_URL}${apiPath}`, {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${idToken}` }
+        method,
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          ...(body !== undefined ? { 'Content-Type': 'application/json' } : {})
+        },
+        ...(body !== undefined ? { body: JSON.stringify(body) } : {})
       })
     } catch (error) {
       logger.error(`Request to ${apiPath} failed:`, error as Error)
@@ -176,11 +210,11 @@ class OperatorAuthService {
     }
   }
 
-  private authedGet = async (apiPath: string): Promise<unknown> => {
-    let response = await this.doGet(apiPath, await this.getValidIdToken())
+  private authedRequest = async (method: string, apiPath: string, body?: unknown): Promise<unknown> => {
+    let response = await this.doRequest(method, apiPath, await this.getValidIdToken(), body)
     if (response.status === 401) {
       // Token rejected despite the proactive check — refresh once and retry.
-      response = await this.doGet(apiPath, await this.forceRefresh())
+      response = await this.doRequest(method, apiPath, await this.forceRefresh(), body)
     }
     const data = await response.json().catch(() => null)
     if (!response.ok) {

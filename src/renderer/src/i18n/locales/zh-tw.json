@@ -6063,7 +6063,24 @@
     "visualization": "視覺化"
   },
   "workflow": {
+    "builder": {
+      "add_field": "新增欄位",
+      "description": "描述",
+      "fields": "欄位",
+      "model": "模型",
+      "name": "名稱",
+      "optional": "選填",
+      "prompt_template": "提示詞範本",
+      "required": "必填",
+      "system_prompt": "系統提示詞",
+      "test_run": "測試執行",
+      "test_values": "測試值",
+      "title": "新增工作流程任務",
+      "upload": "上傳",
+      "uploaded": "工作流程任務已上傳"
+    },
     "launchpad": {
+      "create": "建立",
       "empty": "尚未為你指派工作流程任務。",
       "title": "工作流程任務"
     },

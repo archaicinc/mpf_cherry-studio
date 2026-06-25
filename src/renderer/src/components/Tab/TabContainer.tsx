@@ -129,7 +129,7 @@ const getTabIcon = (
 }
 
 let lastSettingsPath = '/settings/provider'
-const specialTabs = ['launchpad', 'workflow-launchpad', 'settings']
+const specialTabs = ['launchpad', 'workflow-launchpad', 'workflow-builder', 'settings']
 
 const TabsContainer: React.FC<TabsContainerProps> = ({ children }) => {
   const location = useLocation()

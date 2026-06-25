@@ -1,7 +1,7 @@
 import { loggerService } from '@logger'
 import type { WorkflowTask } from '@shared/workflowTask'
-import { Empty, Spin } from 'antd'
-import { Workflow } from 'lucide-react'
+import { Button, Empty, Spin } from 'antd'
+import { Plus, Workflow } from 'lucide-react'
 import type { FC } from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,6 +19,11 @@ const WorkflowLaunchpadPage: FC = () => {
   const [tasks, setTasks] = useState<WorkflowTask[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    window.api.operatorAuth.isAdmin().then(setIsAdmin).catch(() => setIsAdmin(false))
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -43,7 +48,14 @@ const WorkflowLaunchpadPage: FC = () => {
 
   return (
     <Container>
-      <Title>{t('workflow.launchpad.title')}</Title>
+      <Header>
+        <Title>{t('workflow.launchpad.title')}</Title>
+        {isAdmin && (
+          <Button type="primary" icon={<Plus size={14} />} onClick={() => navigate('/workflow-builder')}>
+            {t('workflow.launchpad.create')}
+          </Button>
+        )}
+      </Header>
       {loading ? (
         <Centered>
           <Spin />
@@ -82,11 +94,18 @@ const Container = styled.div`
   overflow-y: auto;
 `
 
+const Header = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+`
+
 const Title = styled.h1`
   font-size: 18px;
   font-weight: 600;
   color: var(--color-text);
-  margin: 0 0 20px;
+  margin: 0;
 `
 
 const Centered = styled.div`

@@ -1,0 +1,344 @@
+import { loggerService } from '@logger'
+import type { InferenceRequest } from '@shared/inference'
+import type { WorkflowTask, WorkflowTaskField, WorkflowTaskFieldType } from '@shared/workflowTask'
+import { Button, Input, InputNumber, Select, Switch } from 'antd'
+import { Play, Plus, Trash2, Upload } from 'lucide-react'
+import type { FC } from 'react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import ReactMarkdown from 'react-markdown'
+import { useNavigate } from 'react-router-dom'
+import remarkGfm from 'remark-gfm'
+import styled from 'styled-components'
+
+const logger = loggerService.withContext('WorkflowBuilderPage')
+
+const MODEL_OPTIONS = ['claude-sonnet', 'claude-haiku']
+const FIELD_TYPES: WorkflowTaskFieldType[] = ['text', 'textarea', 'datepicker', 'select']
+
+/** Admin-only builder: define a workflow task, test it against the gateway, and
+ * upload it to the server. */
+const WorkflowBuilderPage: FC = () => {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [fields, setFields] = useState<WorkflowTaskField[]>([])
+  const [systemPrompt, setSystemPrompt] = useState('')
+  const [promptTemplate, setPromptTemplate] = useState('')
+  const [model, setModel] = useState('claude-sonnet')
+  const [maxTokens, setMaxTokens] = useState<number>(4096)
+  const [temperature, setTemperature] = useState<number>(0.7)
+  const [topP, setTopP] = useState<number>(0.9)
+  const [sampleValues, setSampleValues] = useState<Record<string, string>>({})
+
+  const [output, setOutput] = useState('')
+  const [running, setRunning] = useState(false)
+  const [runError, setRunError] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
+  const addField = () =>
+    setFields((prev) => [...prev, { key: '', label: '', type: 'text', required: false }])
+
+  const updateField = (index: number, patch: Partial<WorkflowTaskField>) =>
+    setFields((prev) => prev.map((f, i) => (i === index ? { ...f, ...patch } : f)))
+
+  const removeField = (index: number) => setFields((prev) => prev.filter((_, i) => i !== index))
+
+  const inferenceConfig = { maxTokens, temperature, topP }
+
+  const buildTaskBody = (): Partial<WorkflowTask> => ({
+    name: name.trim(),
+    description: description.trim(),
+    fields,
+    promptTemplate,
+    systemPrompt,
+    model,
+    inferenceConfig
+  })
+
+  const onRun = async () => {
+    const runId = crypto.randomUUID()
+    setOutput('')
+    setRunError(null)
+    setRunning(true)
+    const filled = promptTemplate.replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, key: string) => sampleValues[key] ?? '')
+    const request: InferenceRequest = {
+      model,
+      type: 'general',
+      messages: [{ role: 'user', content: [{ text: filled }] }],
+      inferenceConfig
+    }
+    if (systemPrompt.trim()) request.system = [{ text: systemPrompt }]
+    const unsubscribe = window.api.workflowTasks.onRunChunk((chunk) => {
+      if (chunk.runId === runId) setOutput((prev) => prev + chunk.text)
+    })
+    try {
+      await window.api.workflowTasks.run(runId, request)
+    } catch (e) {
+      logger.error('Builder test run failed', e as Error)
+      setRunError((e as Error).message)
+    } finally {
+      unsubscribe()
+      setRunning(false)
+    }
+  }
+
+  const onUpload = async () => {
+    setUploadError(null)
+    setUploading(true)
+    try {
+      await window.api.workflowTasks.create(buildTaskBody())
+      window.toast.success(t('workflow.builder.uploaded'))
+      navigate('/workflow-launchpad')
+    } catch (e) {
+      logger.error('Workflow upload failed', e as Error)
+      setUploadError((e as Error).message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const canUpload = name.trim().length > 0 && fields.every((f) => f.key.trim() && f.label.trim())
+
+  return (
+    <Container>
+      <Title>{t('workflow.builder.title')}</Title>
+
+      <Section>
+        <Label>{t('workflow.builder.name')}</Label>
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('workflow.builder.name')} />
+        <Label>{t('workflow.builder.description')}</Label>
+        <Input
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder={t('workflow.builder.description')}
+        />
+      </Section>
+
+      <Section>
+        <SectionHeader>
+          <Label>{t('workflow.builder.fields')}</Label>
+          <Button size="small" icon={<Plus size={14} />} onClick={addField}>
+            {t('workflow.builder.add_field')}
+          </Button>
+        </SectionHeader>
+        {fields.map((field, index) => (
+          <FieldRow key={index}>
+            <Input
+              style={{ width: 140 }}
+              value={field.key}
+              onChange={(e) => updateField(index, { key: e.target.value })}
+              placeholder="key"
+            />
+            <Input
+              style={{ width: 160 }}
+              value={field.label}
+              onChange={(e) => updateField(index, { label: e.target.value })}
+              placeholder="label"
+            />
+            <Select
+              style={{ width: 130 }}
+              value={field.type}
+              onChange={(value) => updateField(index, { type: value })}
+              options={FIELD_TYPES.map((type) => ({ label: type, value: type }))}
+            />
+            {field.type === 'select' && (
+              <Input
+                style={{ width: 180 }}
+                value={(field.options ?? []).join(', ')}
+                onChange={(e) =>
+                  updateField(index, { options: e.target.value.split(',').map((o) => o.trim()).filter(Boolean) })
+                }
+                placeholder="option1, option2"
+              />
+            )}
+            <Switch
+              checked={field.required}
+              onChange={(checked) => updateField(index, { required: checked })}
+              checkedChildren={t('workflow.builder.required')}
+              unCheckedChildren={t('workflow.builder.optional')}
+            />
+            <Button type="text" danger icon={<Trash2 size={14} />} onClick={() => removeField(index)} />
+          </FieldRow>
+        ))}
+      </Section>
+
+      <Section>
+        <Label>{t('workflow.builder.system_prompt')}</Label>
+        <Input.TextArea rows={3} value={systemPrompt} onChange={(e) => setSystemPrompt(e.target.value)} />
+        <Label>{t('workflow.builder.prompt_template')}</Label>
+        <Input.TextArea
+          rows={5}
+          value={promptTemplate}
+          onChange={(e) => setPromptTemplate(e.target.value)}
+          placeholder="Use {{field_key}} placeholders"
+        />
+      </Section>
+
+      <Section>
+        <Label>{t('workflow.builder.model')}</Label>
+        <ParamsRow>
+          <Select
+            style={{ width: 200 }}
+            value={model}
+            onChange={setModel}
+            options={MODEL_OPTIONS.map((m) => ({ label: m, value: m }))}
+          />
+          <ParamField>
+            <span>maxTokens</span>
+            <InputNumber min={1} max={64000} value={maxTokens} onChange={(v) => setMaxTokens(v ?? 4096)} />
+          </ParamField>
+          <ParamField>
+            <span>temperature</span>
+            <InputNumber min={0} max={2} step={0.1} value={temperature} onChange={(v) => setTemperature(v ?? 0.7)} />
+          </ParamField>
+          <ParamField>
+            <span>topP</span>
+            <InputNumber min={0} max={1} step={0.05} value={topP} onChange={(v) => setTopP(v ?? 0.9)} />
+          </ParamField>
+        </ParamsRow>
+      </Section>
+
+      {fields.length > 0 && (
+        <Section>
+          <Label>{t('workflow.builder.test_values')}</Label>
+          {fields.map((field, index) => (
+            <TestRow key={index}>
+              <TestLabel>{field.label || field.key || `#${index + 1}`}</TestLabel>
+              <Input
+                value={sampleValues[field.key] ?? ''}
+                onChange={(e) => setSampleValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                placeholder={field.key}
+              />
+            </TestRow>
+          ))}
+        </Section>
+      )}
+
+      <Actions>
+        <Button icon={<Play size={14} />} loading={running} disabled={running} onClick={onRun}>
+          {running ? t('workflow.task.running') : t('workflow.builder.test_run')}
+        </Button>
+        <Button
+          type="primary"
+          icon={<Upload size={14} />}
+          loading={uploading}
+          disabled={uploading || !canUpload}
+          onClick={onUpload}>
+          {t('workflow.builder.upload')}
+        </Button>
+      </Actions>
+
+      {uploadError && <ErrorText>{uploadError}</ErrorText>}
+
+      {(output || runError) && (
+        <Section>
+          <Label>{t('workflow.task.result')}</Label>
+          {runError ? (
+            <ErrorText>{runError}</ErrorText>
+          ) : (
+            <Markdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{output}</ReactMarkdown>
+            </Markdown>
+          )}
+        </Section>
+      )}
+    </Container>
+  )
+}
+
+const Container = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+  width: 100%;
+  max-width: 820px;
+  padding: 24px;
+  overflow-y: auto;
+`
+
+const Title = styled.h1`
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+`
+
+const Section = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`
+
+const SectionHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`
+
+const Label = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+`
+
+const FieldRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+`
+
+const ParamsRow = styled.div`
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+`
+
+const ParamField = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+`
+
+const TestRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`
+
+const TestLabel = styled.div`
+  width: 160px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+`
+
+const Actions = styled.div`
+  display: flex;
+  gap: 10px;
+`
+
+const ErrorText = styled.div`
+  font-size: 13px;
+  color: var(--color-error);
+`
+
+const Markdown = styled.div`
+  font-size: 14px;
+  color: var(--color-text);
+  line-height: 1.6;
+  padding: 14px 16px;
+  border-radius: 8px;
+  border: 0.5px solid var(--color-border);
+  background-color: var(--color-background-soft);
+  word-break: break-word;
+`
+
+export default WorkflowBuilderPage

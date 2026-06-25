@@ -6063,7 +6063,24 @@
     "visualization": "可视化"
   },
   "workflow": {
+    "builder": {
+      "add_field": "添加字段",
+      "description": "描述",
+      "fields": "字段",
+      "model": "模型",
+      "name": "名称",
+      "optional": "可选",
+      "prompt_template": "提示词模板",
+      "required": "必填",
+      "system_prompt": "系统提示词",
+      "test_run": "测试运行",
+      "test_values": "测试值",
+      "title": "新建工作流任务",
+      "upload": "上传",
+      "uploaded": "工作流任务已上传"
+    },
     "launchpad": {
+      "create": "创建",
       "empty": "尚未为你分配工作流任务。",
       "title": "工作流任务"
     },

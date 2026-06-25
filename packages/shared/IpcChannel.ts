@@ -142,8 +142,10 @@ export enum IpcChannel {
   OperatorAuth_SubmitNewPassword = 'operator-auth:submit-new-password',
   OperatorAuth_Logout = 'operator-auth:logout',
   OperatorAuth_GetStatus = 'operator-auth:get-status',
+  OperatorAuth_IsAdmin = 'operator-auth:is-admin',
   WorkflowTasks_List = 'workflow-tasks:list',
   WorkflowTasks_Get = 'workflow-tasks:get',
+  WorkflowTasks_Create = 'workflow-tasks:create',
   WorkflowTasks_Run = 'workflow-tasks:run',
   WorkflowTasks_RunChunk = 'workflow-tasks:run-chunk',
 

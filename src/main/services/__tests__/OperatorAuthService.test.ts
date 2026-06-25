@@ -149,4 +149,29 @@ describe('OperatorAuthService', () => {
     await expect(service.runWorkflowTask(evt, 'r1', request)).rejects.toThrow('not configured')
     expect(fetchMock).not.toHaveBeenCalled()
   })
+
+  it('createWorkflowTask POSTs the task body to /me/workflow-tasks', async () => {
+    readFile.mockResolvedValue(
+      Buffer.from(JSON.stringify({ idToken: 'idtok', expiresIn: 3600, obtainedAt: Date.now() }))
+    )
+    fetchMock.mockResolvedValue(response(201, { workflowTaskId: 'wf_9', name: 'T' }))
+    const createdTask = await service.createWorkflowTask(evt, { name: 'T' })
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${BASE}/me/workflow-tasks`,
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ name: 'T' }) })
+    )
+    expect(createdTask.workflowTaskId).toBe('wf_9')
+  })
+
+  it('isAdmin reads cognito:groups from the idToken', async () => {
+    const payload = Buffer.from(JSON.stringify({ 'cognito:groups': ['admin', 'operator'] })).toString('base64')
+    readFile.mockResolvedValue(Buffer.from(JSON.stringify({ idToken: `h.${payload}.s` })))
+    expect(await service.isAdmin()).toBe(true)
+  })
+
+  it('isAdmin is false for an operator-only token', async () => {
+    const payload = Buffer.from(JSON.stringify({ 'cognito:groups': ['operator'] })).toString('base64')
+    readFile.mockResolvedValue(Buffer.from(JSON.stringify({ idToken: `h.${payload}.s` })))
+    expect(await service.isAdmin()).toBe(false)
+  })
 })

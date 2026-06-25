@@ -27,6 +27,7 @@ import PaintingsRoutePage from './pages/paintings/PaintingsRoutePage'
 import SettingsPage from './pages/settings/SettingsPage'
 import AssistantPresetsPage from './pages/store/assistants/presets/AssistantPresetsPage'
 import TranslatePage from './pages/translate/TranslatePage'
+import WorkflowBuilderPage from './pages/workflow/WorkflowBuilderPage'
 import WorkflowLaunchpadPage from './pages/workflow/WorkflowLaunchpadPage'
 import WorkflowTaskPage from './pages/workflow/WorkflowTaskPage'
 
@@ -54,6 +55,7 @@ const Router: FC = () => {
           <Route path="/settings/*" element={<SettingsPage />} />
           <Route path="/launchpad" element={<LaunchpadPage />} />
           <Route path="/workflow-launchpad" element={<WorkflowLaunchpadPage />} />
+          <Route path="/workflow-builder" element={<WorkflowBuilderPage />} />
           <Route path="/workflow-task/:id" element={<WorkflowTaskPage />} />
         </Routes>
       </ErrorBoundary>

@@ -6063,7 +6063,24 @@
     "visualization": "Visualization"
   },
   "workflow": {
+    "builder": {
+      "add_field": "Add field",
+      "description": "Description",
+      "fields": "Fields",
+      "model": "Model",
+      "name": "Name",
+      "optional": "Optional",
+      "prompt_template": "Prompt template",
+      "required": "Required",
+      "system_prompt": "System prompt",
+      "test_run": "Test run",
+      "test_values": "Test values",
+      "title": "New workflow task",
+      "upload": "Upload",
+      "uploaded": "Workflow task uploaded"
+    },
     "launchpad": {
+      "create": "Create",
       "empty": "No workflow tasks are assigned to you yet.",
       "title": "Workflow Tasks"
     },

@@ -1,3 +1,4 @@
+import { MPF_SERVER_CONFIG } from '@shared/config/constant'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const fetchMock = vi.fn()
@@ -144,10 +145,49 @@ describe('OperatorAuthService', () => {
   })
 
   it('runWorkflowTask throws when the inference endpoint is not configured', async () => {
-    // MPF_SERVER_CONFIG.INFERENCE_STREAM_URL defaults to '' until filled post-deploy
+    const original = MPF_SERVER_CONFIG.INFERENCE_STREAM_URL
+    MPF_SERVER_CONFIG.INFERENCE_STREAM_URL = ''
+    try {
+      const request = { model: 'claude-sonnet', type: 'workflow_task' as const, messages: [] }
+      await expect(service.runWorkflowTask(evt, 'r1', request)).rejects.toThrow('not configured')
+      expect(fetchMock).not.toHaveBeenCalled()
+    } finally {
+      MPF_SERVER_CONFIG.INFERENCE_STREAM_URL = original
+    }
+  })
+
+  it('runWorkflowTask streams to the gateway using the access token, not the idToken', async () => {
+    readFile.mockResolvedValue(
+      Buffer.from(JSON.stringify({ accessToken: 'acc', idToken: 'idtok', expiresIn: 3600, obtainedAt: Date.now() }))
+    )
+    const reader = { read: vi.fn().mockResolvedValue({ done: true, value: undefined }) }
+    fetchMock.mockResolvedValue({ ok: true, status: 200, body: { getReader: () => reader } })
     const request = { model: 'claude-sonnet', type: 'workflow_task' as const, messages: [] }
-    await expect(service.runWorkflowTask(evt, 'r1', request)).rejects.toThrow('not configured')
-    expect(fetchMock).not.toHaveBeenCalled()
+    await service.runWorkflowTask(evt, 'r1', request)
+    expect(fetchMock).toHaveBeenCalledWith(
+      MPF_SERVER_CONFIG.INFERENCE_STREAM_URL,
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer acc' })
+      })
+    )
+  })
+
+  it('runWorkflowTask drops top_p when temperature is also set (Anthropic constraint)', async () => {
+    readFile.mockResolvedValue(
+      Buffer.from(JSON.stringify({ accessToken: 'acc', idToken: 'idtok', expiresIn: 3600, obtainedAt: Date.now() }))
+    )
+    const reader = { read: vi.fn().mockResolvedValue({ done: true, value: undefined }) }
+    fetchMock.mockResolvedValue({ ok: true, status: 200, body: { getReader: () => reader } })
+    const request = {
+      model: 'claude-sonnet',
+      type: 'workflow_task' as const,
+      messages: [],
+      inferenceConfig: { maxTokens: 4096, temperature: 0.7, topP: 0.9 }
+    }
+    await service.runWorkflowTask(evt, 'r1', request)
+    const sent = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body)
+    expect(sent.inferenceConfig).toEqual({ maxTokens: 4096, temperature: 0.7 })
   })
 
   it('createWorkflowTask POSTs the task body to /me/workflow-tasks', async () => {

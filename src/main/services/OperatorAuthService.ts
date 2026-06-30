@@ -156,9 +156,16 @@ class OperatorAuthService {
       throw new OperatorAuthError('Inference endpoint is not configured')
     }
 
-    let response = await this.postStream(request, await this.getValidIdToken())
+    // Anthropic models reject temperature and top_p together; drop top_p, keep temperature.
+    const cfg = request.inferenceConfig
+    const payload: InferenceRequest =
+      cfg && cfg.temperature !== undefined && cfg.topP !== undefined
+        ? { ...request, inferenceConfig: { maxTokens: cfg.maxTokens, temperature: cfg.temperature } }
+        : request
+
+    let response = await this.postStream(payload, await this.getValidAccessToken())
     if (response.status === 401) {
-      response = await this.postStream(request, await this.forceRefresh())
+      response = await this.postStream(payload, await this.forceRefreshAccessToken())
     }
     if (!response.ok || !response.body) {
       throw new OperatorAuthError(`HTTP ${response.status}`)
@@ -290,8 +297,8 @@ class OperatorAuthService {
     return this.persistTokens({ ...(data as AuthTokens), refreshToken: stored.refreshToken })
   }
 
-  /** A valid idToken, refreshing proactively when the current one is near expiry. */
-  private getValidIdToken = async (): Promise<string> => {
+  /** A valid token bundle, refreshing proactively when the current one is near expiry. */
+  private getValidTokens = async (): Promise<StoredTokens> => {
     const stored = await this.readTokens()
     if (!stored?.idToken) {
       throw new OperatorAuthError('Not signed in')
@@ -300,19 +307,29 @@ class OperatorAuthService {
     // Refresh a minute early to absorb clock skew; if no refresh token, let the
     // server be the judge (a 401 then triggers a clear "sign in again").
     if (Date.now() < expiresAt - 60_000 || !stored.refreshToken) {
-      return stored.idToken
+      return stored
     }
-    return (await this.refreshTokens(stored)).idToken
+    return this.refreshTokens(stored)
   }
 
+  /** The idToken for the API Gateway JWT authorizer (carries email/custom claims). */
+  private getValidIdToken = async (): Promise<string> => (await this.getValidTokens()).idToken
+
+  /** The access token for the inference gateway, which verifies tokenUse:"access". */
+  private getValidAccessToken = async (): Promise<string> => (await this.getValidTokens()).accessToken
+
   /** Force a refresh after a 401 (e.g. server-side invalidation or clock skew). */
-  private forceRefresh = async (): Promise<string> => {
+  private forceRefreshTokens = async (): Promise<StoredTokens> => {
     const stored = await this.readTokens()
     if (!stored) {
       throw new OperatorAuthError('Not signed in')
     }
-    return (await this.refreshTokens(stored)).idToken
+    return this.refreshTokens(stored)
   }
+
+  private forceRefresh = async (): Promise<string> => (await this.forceRefreshTokens()).idToken
+
+  private forceRefreshAccessToken = async (): Promise<string> => (await this.forceRefreshTokens()).accessToken
 
   private post = async (apiPath: string, body: unknown): Promise<unknown> => {
     let response: Response

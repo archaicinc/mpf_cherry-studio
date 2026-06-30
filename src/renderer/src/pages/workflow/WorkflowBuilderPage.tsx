@@ -217,7 +217,7 @@ const WorkflowBuilderPage: FC = () => {
   if (loadError) {
     return (
       <Container>
-        <ErrorText>{loadError}</ErrorText>
+        <ErrorText className="selectable">{loadError}</ErrorText>
       </Container>
     )
   }
@@ -345,15 +345,15 @@ const WorkflowBuilderPage: FC = () => {
         </Button>
       </Actions>
 
-      {uploadError && <ErrorText>{uploadError}</ErrorText>}
+      {uploadError && <ErrorText className="selectable">{uploadError}</ErrorText>}
 
       {(output || runError) && (
         <Section>
           <Label>{t('workflow.task.result')}</Label>
           {runError ? (
-            <ErrorText>{runError}</ErrorText>
+            <ErrorText className="selectable">{runError}</ErrorText>
           ) : (
-            <Markdown>
+            <Markdown className="selectable">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{output}</ReactMarkdown>
             </Markdown>
           )}

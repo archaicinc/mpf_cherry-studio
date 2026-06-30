@@ -159,9 +159,9 @@ const WorkflowTaskPage: FC = () => {
         <Result>
           <ResultTitle>{t('workflow.task.result')}</ResultTitle>
           {runError ? (
-            <ResultError>{runError}</ResultError>
+            <ResultError className="selectable">{runError}</ResultError>
           ) : (
-            <Markdown>
+            <Markdown className="selectable">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{output}</ReactMarkdown>
             </Markdown>
           )}

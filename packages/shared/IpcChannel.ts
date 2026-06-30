@@ -143,9 +143,11 @@ export enum IpcChannel {
   OperatorAuth_Logout = 'operator-auth:logout',
   OperatorAuth_GetStatus = 'operator-auth:get-status',
   OperatorAuth_IsAdmin = 'operator-auth:is-admin',
+  OperatorAuth_GetCurrentUserEmail = 'operator-auth:get-current-user-email',
   WorkflowTasks_List = 'workflow-tasks:list',
   WorkflowTasks_Get = 'workflow-tasks:get',
   WorkflowTasks_Create = 'workflow-tasks:create',
+  WorkflowTasks_Update = 'workflow-tasks:update',
   WorkflowTasks_Run = 'workflow-tasks:run',
   WorkflowTasks_RunChunk = 'workflow-tasks:run-chunk',
 

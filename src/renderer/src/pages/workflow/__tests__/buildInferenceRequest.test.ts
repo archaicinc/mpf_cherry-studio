@@ -8,6 +8,7 @@ const task: WorkflowTask = {
   name: 'Estimation',
   description: '',
   version: 1,
+  owner: 'creator@x.com',
   fields: [{ key: 'amount', type: 'text', label: 'Amount', required: true }],
   promptTemplate: 'Estimate {{amount}} please',
   systemPrompt: 'You are an estimator.',

@@ -163,6 +163,30 @@ describe('OperatorAuthService', () => {
     expect(createdTask.workflowTaskId).toBe('wf_9')
   })
 
+  it('updateWorkflowTask PATCHes the task body to the per-id route', async () => {
+    readFile.mockResolvedValue(
+      Buffer.from(JSON.stringify({ idToken: 'idtok', expiresIn: 3600, obtainedAt: Date.now() }))
+    )
+    fetchMock.mockResolvedValue(response(200, { workflowTaskId: 'wf_9', name: 'Renamed' }))
+    const updated = await service.updateWorkflowTask(evt, 'wf_9', { name: 'Renamed' })
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${BASE}/me/workflow-tasks/wf_9`,
+      expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ name: 'Renamed' }) })
+    )
+    expect(updated.name).toBe('Renamed')
+  })
+
+  it('getCurrentUserEmail reads the email claim from the idToken', async () => {
+    const payload = Buffer.from(JSON.stringify({ email: 'creator@x.com' })).toString('base64')
+    readFile.mockResolvedValue(Buffer.from(JSON.stringify({ idToken: `h.${payload}.s` })))
+    expect(await service.getCurrentUserEmail()).toBe('creator@x.com')
+  })
+
+  it('getCurrentUserEmail returns empty string when not signed in', async () => {
+    readFile.mockRejectedValue(new Error('ENOENT'))
+    expect(await service.getCurrentUserEmail()).toBe('')
+  })
+
   it('isAdmin reads cognito:groups from the idToken', async () => {
     const payload = Buffer.from(JSON.stringify({ 'cognito:groups': ['admin', 'operator'] })).toString('base64')
     readFile.mockResolvedValue(Buffer.from(JSON.stringify({ idToken: `h.${payload}.s` })))

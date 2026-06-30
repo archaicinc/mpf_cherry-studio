@@ -23,6 +23,8 @@ export interface WorkflowTask {
   name: string
   description: string
   version: number
+  /** Email of the admin who created the task; only the creator may edit it. */
+  owner: string
   fields: WorkflowTaskField[]
   promptTemplate: string
   systemPrompt: string

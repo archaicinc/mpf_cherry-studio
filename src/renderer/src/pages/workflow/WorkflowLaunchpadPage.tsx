@@ -20,10 +20,16 @@ const WorkflowLaunchpadPage: FC = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [email, setEmail] = useState('')
 
   useEffect(() => {
     window.api.operatorAuth.isAdmin().then(setIsAdmin).catch(() => setIsAdmin(false))
+    window.api.operatorAuth.getCurrentUserEmail().then(setEmail).catch(() => setEmail(''))
   }, [])
+
+  // The creator edits their own task; everyone else runs it.
+  const openTask = (task: WorkflowTask) =>
+    navigate(task.owner === email ? `/workflow-builder/${task.workflowTaskId}` : `/workflow-task/${task.workflowTaskId}`)
 
   useEffect(() => {
     let cancelled = false
@@ -71,7 +77,7 @@ const WorkflowLaunchpadPage: FC = () => {
       ) : (
         <Grid>
           {tasks.map((task) => (
-            <Card key={task.workflowTaskId} onClick={() => navigate(`/workflow-task/${task.workflowTaskId}`)}>
+            <Card key={task.workflowTaskId} onClick={() => openTask(task)}>
               <CardIcon>
                 <Workflow size={24} />
               </CardIcon>

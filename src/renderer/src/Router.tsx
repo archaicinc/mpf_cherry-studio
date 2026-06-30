@@ -56,6 +56,7 @@ const Router: FC = () => {
           <Route path="/launchpad" element={<LaunchpadPage />} />
           <Route path="/workflow-launchpad" element={<WorkflowLaunchpadPage />} />
           <Route path="/workflow-builder" element={<WorkflowBuilderPage />} />
+          <Route path="/workflow-builder/:id" element={<WorkflowBuilderPage />} />
           <Route path="/workflow-task/:id" element={<WorkflowTaskPage />} />
         </Routes>
       </ErrorBoundary>

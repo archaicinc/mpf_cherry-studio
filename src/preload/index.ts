@@ -462,7 +462,8 @@ const api = {
       ipcRenderer.invoke(IpcChannel.OperatorAuth_SubmitNewPassword, email, newPassword, session),
     logout: () => ipcRenderer.invoke(IpcChannel.OperatorAuth_Logout),
     getStatus: () => ipcRenderer.invoke(IpcChannel.OperatorAuth_GetStatus),
-    isAdmin: (): Promise<boolean> => ipcRenderer.invoke(IpcChannel.OperatorAuth_IsAdmin)
+    isAdmin: (): Promise<boolean> => ipcRenderer.invoke(IpcChannel.OperatorAuth_IsAdmin),
+    getCurrentUserEmail: (): Promise<string> => ipcRenderer.invoke(IpcChannel.OperatorAuth_GetCurrentUserEmail)
   },
   workflowTasks: {
     list: (): Promise<import('@shared/workflowTask').WorkflowTask[]> => ipcRenderer.invoke(IpcChannel.WorkflowTasks_List),
@@ -471,6 +472,11 @@ const api = {
     create: (
       body: Partial<import('@shared/workflowTask').WorkflowTask>
     ): Promise<import('@shared/workflowTask').WorkflowTask> => ipcRenderer.invoke(IpcChannel.WorkflowTasks_Create, body),
+    update: (
+      id: string,
+      body: Partial<import('@shared/workflowTask').WorkflowTask>
+    ): Promise<import('@shared/workflowTask').WorkflowTask> =>
+      ipcRenderer.invoke(IpcChannel.WorkflowTasks_Update, id, body),
     run: (runId: string, request: import('@shared/inference').InferenceRequest): Promise<void> =>
       ipcRenderer.invoke(IpcChannel.WorkflowTasks_Run, runId, request),
     onRunChunk: (callback: (chunk: import('@shared/inference').WorkflowRunChunk) => void): (() => void) => {

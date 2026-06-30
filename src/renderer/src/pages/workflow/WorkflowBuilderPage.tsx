@@ -1,13 +1,13 @@
 import { loggerService } from '@logger'
 import type { InferenceRequest } from '@shared/inference'
 import type { WorkflowTask, WorkflowTaskField, WorkflowTaskFieldType } from '@shared/workflowTask'
-import { Button, DatePicker, Input, InputNumber, Select, Switch } from 'antd'
+import { Button, DatePicker, Input, InputNumber, Select, Spin, Switch } from 'antd'
 import { Play, Plus, Trash2, Upload } from 'lucide-react'
 import type { FC } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import remarkGfm from 'remark-gfm'
 import styled from 'styled-components'
 
@@ -31,6 +31,9 @@ interface BuilderField {
 const WorkflowBuilderPage: FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  // When an id is present the page edits an existing task (creator-only); otherwise it creates one.
+  const { id } = useParams<{ id: string }>()
+  const editing = Boolean(id)
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -48,6 +51,45 @@ const WorkflowBuilderPage: FC = () => {
   const [runError, setRunError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(editing)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!id) return
+    let cancelled = false
+    window.api.workflowTasks
+      .get(id)
+      .then((task) => {
+        if (cancelled) return
+        setName(task.name)
+        setDescription(task.description)
+        setFields(
+          task.fields.map((f) => ({
+            key: f.key,
+            label: f.label,
+            type: f.type,
+            required: f.required,
+            optionsText: (f.options ?? []).join(', ')
+          }))
+        )
+        setSystemPrompt(task.systemPrompt ?? '')
+        setPromptTemplate(task.promptTemplate ?? '')
+        setModel(task.model ?? 'claude-sonnet')
+        setMaxTokens(task.inferenceConfig?.maxTokens ?? 4096)
+        setTemperature(task.inferenceConfig?.temperature ?? 0.7)
+        setTopP(task.inferenceConfig?.topP ?? 0.9)
+      })
+      .catch((e: Error) => {
+        logger.error('Failed to load workflow task for editing', e)
+        if (!cancelled) setLoadError(e.message)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [id])
 
   const addField = () =>
     setFields((prev) => [...prev, { key: '', label: '', type: 'text', required: false, optionsText: '' }])
@@ -110,8 +152,13 @@ const WorkflowBuilderPage: FC = () => {
     setUploadError(null)
     setUploading(true)
     try {
-      await window.api.workflowTasks.create(buildTaskBody())
-      window.toast.success(t('workflow.builder.uploaded'))
+      if (editing && id) {
+        await window.api.workflowTasks.update(id, buildTaskBody())
+        window.toast.success(t('workflow.builder.saved'))
+      } else {
+        await window.api.workflowTasks.create(buildTaskBody())
+        window.toast.success(t('workflow.builder.uploaded'))
+      }
       navigate('/workflow-launchpad')
     } catch (e) {
       logger.error('Workflow upload failed', e as Error)
@@ -159,9 +206,25 @@ const WorkflowBuilderPage: FC = () => {
     }
   }
 
+  if (loading) {
+    return (
+      <Container>
+        <Spin />
+      </Container>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <Container>
+        <ErrorText>{loadError}</ErrorText>
+      </Container>
+    )
+  }
+
   return (
     <Container>
-      <Title>{t('workflow.builder.title')}</Title>
+      <Title>{editing ? t('workflow.builder.edit_title') : t('workflow.builder.title')}</Title>
 
       <Section>
         <Label>{t('workflow.builder.name')}</Label>
@@ -278,7 +341,7 @@ const WorkflowBuilderPage: FC = () => {
           loading={uploading}
           disabled={uploading || !canUpload}
           onClick={onUpload}>
-          {t('workflow.builder.upload')}
+          {editing ? t('workflow.builder.save') : t('workflow.builder.upload')}
         </Button>
       </Actions>
 

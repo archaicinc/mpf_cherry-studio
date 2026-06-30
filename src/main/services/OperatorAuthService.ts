@@ -95,10 +95,40 @@ class OperatorAuthService {
     return (await this.authedRequest('POST', '/me/workflow-tasks', body)) as WorkflowTask
   }
 
+  /** Update a workflow task. Creator-only — the server enforces it (403 otherwise). */
+  public updateWorkflowTask = async (
+    _: Electron.IpcMainInvokeEvent,
+    id: string,
+    body: Partial<WorkflowTask>
+  ): Promise<WorkflowTask> => {
+    return (await this.authedRequest(
+      'PATCH',
+      `/me/workflow-tasks/${encodeURIComponent(id)}`,
+      body
+    )) as WorkflowTask
+  }
+
   /** Whether the signed-in operator is an admin (from the idToken's groups). */
   public isAdmin = async (): Promise<boolean> => {
     const tokens = await this.readTokens()
     return tokens?.idToken ? this.tokenGroups(tokens.idToken).includes('admin') : false
+  }
+
+  /** Email of the signed-in user (from the idToken), or '' if unavailable. */
+  public getCurrentUserEmail = async (): Promise<string> => {
+    const tokens = await this.readTokens()
+    return tokens?.idToken ? this.tokenClaim(tokens.idToken, 'email') : ''
+  }
+
+  private tokenClaim = (idToken: string, claim: string): string => {
+    try {
+      const payload = idToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+      const claims = JSON.parse(Buffer.from(payload, 'base64').toString('utf-8')) as Record<string, unknown>
+      const value = claims[claim]
+      return typeof value === 'string' ? value : ''
+    } catch {
+      return ''
+    }
   }
 
   private tokenGroups = (idToken: string): string[] => {

@@ -227,6 +227,19 @@ describe('OperatorAuthService', () => {
     expect(await service.getCurrentUserEmail()).toBe('')
   })
 
+  it('fetchModels GETs /models and returns items', async () => {
+    readFile.mockResolvedValue(Buffer.from(JSON.stringify({ idToken: 'idtok' })))
+    fetchMock.mockResolvedValue(
+      response(200, {
+        items: [{ profileId: 'jp.anthropic.claude-sonnet-4-5-20250929-v1:0', label: 'Claude Sonnet 4.5 (Anthropic)', provider: 'Anthropic' }]
+      })
+    )
+    const models = await service.fetchModels()
+    expect(fetchMock).toHaveBeenCalledWith(`${BASE}/models`, expect.objectContaining({ method: 'GET' }))
+    expect(models).toHaveLength(1)
+    expect(models[0].profileId).toBe('jp.anthropic.claude-sonnet-4-5-20250929-v1:0')
+  })
+
   it('isAdmin reads cognito:groups from the idToken', async () => {
     const payload = Buffer.from(JSON.stringify({ 'cognito:groups': ['admin', 'operator'] })).toString('base64')
     readFile.mockResolvedValue(Buffer.from(JSON.stringify({ idToken: `h.${payload}.s` })))

@@ -2,7 +2,7 @@ import { loggerService } from '@logger'
 import { MPF_SERVER_CONFIG } from '@shared/config/constant'
 import type { InferenceRequest, InferenceStreamEvent } from '@shared/inference'
 import { IpcChannel } from '@shared/IpcChannel'
-import type { WorkflowTask } from '@shared/workflowTask'
+import type { ModelOption, WorkflowTask } from '@shared/workflowTask'
 import { net, safeStorage } from 'electron'
 import fs from 'fs'
 import path from 'path'
@@ -106,6 +106,12 @@ class OperatorAuthService {
       `/me/workflow-tasks/${encodeURIComponent(id)}`,
       body
     )) as WorkflowTask
+  }
+
+  /** The Bedrock models the account can invoke now, for the builder's picker. Admin-only. */
+  public fetchModels = async (): Promise<ModelOption[]> => {
+    const data = (await this.authedRequest('GET', '/models')) as { items?: ModelOption[] } | null
+    return data?.items ?? []
   }
 
   /** Whether the signed-in operator is an admin (from the idToken's groups). */

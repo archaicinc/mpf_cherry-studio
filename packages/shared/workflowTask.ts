@@ -12,6 +12,14 @@ export interface WorkflowTaskField {
   options?: string[]
 }
 
+/** A callable Bedrock model offered in the builder's picker (from GET /models). */
+export interface ModelOption {
+  /** Bedrock inference-profile id stored on the task and sent to the gateway. */
+  profileId: string
+  label: string
+  provider: string
+}
+
 export interface WorkflowTaskInferenceConfig {
   maxTokens?: number
   temperature?: number

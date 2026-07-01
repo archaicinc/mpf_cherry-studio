@@ -885,6 +885,7 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   ipcMain.handle(IpcChannel.WorkflowTasks_Get, OperatorAuthService.fetchWorkflowTask.bind(OperatorAuthService))
   ipcMain.handle(IpcChannel.WorkflowTasks_Create, OperatorAuthService.createWorkflowTask.bind(OperatorAuthService))
   ipcMain.handle(IpcChannel.WorkflowTasks_Update, OperatorAuthService.updateWorkflowTask.bind(OperatorAuthService))
+  ipcMain.handle(IpcChannel.WorkflowTasks_ListModels, OperatorAuthService.fetchModels.bind(OperatorAuthService))
   ipcMain.handle(IpcChannel.WorkflowTasks_Run, OperatorAuthService.runWorkflowTask.bind(OperatorAuthService))
 
   // CherryIN OAuth

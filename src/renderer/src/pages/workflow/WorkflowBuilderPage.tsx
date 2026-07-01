@@ -1,10 +1,10 @@
 import { loggerService } from '@logger'
 import type { InferenceRequest } from '@shared/inference'
-import type { WorkflowTask, WorkflowTaskField, WorkflowTaskFieldType } from '@shared/workflowTask'
+import type { ModelOption, WorkflowTask, WorkflowTaskField, WorkflowTaskFieldType } from '@shared/workflowTask'
 import { Button, DatePicker, Input, InputNumber, Select, Spin, Switch } from 'antd'
 import { Play, Plus, Trash2, Upload } from 'lucide-react'
 import type { FC } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -13,7 +13,6 @@ import styled from 'styled-components'
 
 const logger = loggerService.withContext('WorkflowBuilderPage')
 
-const MODEL_OPTIONS = ['claude-sonnet', 'claude-haiku']
 const FIELD_TYPES: WorkflowTaskFieldType[] = ['text', 'textarea', 'datepicker', 'select']
 
 // While editing, `select` options are kept as the raw comma-separated text the
@@ -53,6 +52,26 @@ const WorkflowBuilderPage: FC = () => {
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [loading, setLoading] = useState(editing)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [models, setModels] = useState<ModelOption[]>([])
+
+  useEffect(() => {
+    window.api.workflowTasks
+      .listModels()
+      .then((list) => {
+        setModels(list)
+        // New task: default to a real catalog model instead of the legacy
+        // "claude-sonnet" alias, so it doesn't linger in the picker. Editing
+        // keeps whatever the task actually saved.
+        if (!editing && list.length > 0) {
+          setModel((cur) => (list.some((m) => m.profileId === cur) ? cur : list[0].profileId))
+        }
+      })
+      .catch((e) => logger.error('Failed to load models', e as Error))
+  }, [editing])
+
+  // Options are exactly the live Bedrock catalog — no fallback. If the fetch
+  // fails or returns nothing, the picker is empty.
+  const modelOptions = useMemo(() => models.map((m) => ({ label: m.label, value: m.profileId })), [models])
 
   useEffect(() => {
     if (!id) return
@@ -298,12 +317,7 @@ const WorkflowBuilderPage: FC = () => {
       <Section>
         <Label>{t('workflow.builder.model')}</Label>
         <ParamsRow>
-          <Select
-            style={{ width: 200 }}
-            value={model}
-            onChange={setModel}
-            options={MODEL_OPTIONS.map((m) => ({ label: m, value: m }))}
-          />
+          <Select style={{ width: 320 }} value={model} onChange={setModel} options={modelOptions} />
           <ParamField>
             <span>maxTokens</span>
             <InputNumber min={1} max={64000} value={maxTokens} onChange={(v) => setMaxTokens(v ?? 4096)} />

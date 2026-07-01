@@ -148,6 +148,7 @@ export enum IpcChannel {
   WorkflowTasks_Get = 'workflow-tasks:get',
   WorkflowTasks_Create = 'workflow-tasks:create',
   WorkflowTasks_Update = 'workflow-tasks:update',
+  WorkflowTasks_ListModels = 'workflow-tasks:list-models',
   WorkflowTasks_Run = 'workflow-tasks:run',
   WorkflowTasks_RunChunk = 'workflow-tasks:run-chunk',
 

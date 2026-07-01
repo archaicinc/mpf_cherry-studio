@@ -477,6 +477,8 @@ const api = {
       body: Partial<import('@shared/workflowTask').WorkflowTask>
     ): Promise<import('@shared/workflowTask').WorkflowTask> =>
       ipcRenderer.invoke(IpcChannel.WorkflowTasks_Update, id, body),
+    listModels: (): Promise<import('@shared/workflowTask').ModelOption[]> =>
+      ipcRenderer.invoke(IpcChannel.WorkflowTasks_ListModels),
     run: (runId: string, request: import('@shared/inference').InferenceRequest): Promise<void> =>
       ipcRenderer.invoke(IpcChannel.WorkflowTasks_Run, runId, request),
     onRunChunk: (callback: (chunk: import('@shared/inference').WorkflowRunChunk) => void): (() => void) => {

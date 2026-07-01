@@ -70,6 +70,27 @@ export function setNavItemHidden(key: string, value: boolean): void {
   listeners.forEach((listener) => listener())
 }
 
+// Top-layout tab ids differ slightly from the sidebar-icon keys, so map them to
+// decide whether a tab belongs to a hidden item (used by the tab bar and when
+// picking the next active tab after a close).
+const TAB_ID_TO_NAV_KEY: Record<string, string> = {
+  agents: 'agents',
+  store: 'store',
+  paintings: 'paintings',
+  translate: 'translate',
+  apps: 'minapp',
+  knowledge: 'knowledge',
+  files: 'files',
+  code: 'code_tools',
+  notes: 'notes',
+  openclaw: 'openclaw'
+}
+
+export function isTabHidden(tabId: string, hiddenItems: Set<string>): boolean {
+  const key = TAB_ID_TO_NAV_KEY[tabId]
+  return key ? hiddenItems.has(key) : false
+}
+
 export function subscribeNavVisibility(listener: () => void): () => void {
   listeners.add(listener)
   return () => {

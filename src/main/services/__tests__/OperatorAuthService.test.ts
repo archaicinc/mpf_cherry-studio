@@ -1,21 +1,24 @@
+import { MPF_SERVER_CONFIG } from '@shared/config/constant'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const fetchMock = vi.fn()
 const encryptString = vi.fn((s: string) => Buffer.from(s))
+const decryptString = vi.fn((b: Buffer) => b.toString())
 const access = vi.fn()
 const unlink = vi.fn(async () => {})
 const writeFile = vi.fn(async () => {})
 const mkdir = vi.fn(async () => {})
+const readFile = vi.fn()
 
 vi.mock('electron', () => ({
   net: { fetch: fetchMock },
-  safeStorage: { encryptString }
+  safeStorage: { encryptString, decryptString }
 }))
 
 vi.mock('fs', () => {
   const mock = {
     existsSync: vi.fn(() => true),
-    promises: { access, unlink, writeFile, mkdir }
+    promises: { access, unlink, writeFile, mkdir, readFile }
   }
   return { ...mock, default: mock }
 })
@@ -37,6 +40,7 @@ describe('OperatorAuthService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     encryptString.mockImplementation((s: string) => Buffer.from(s))
+    decryptString.mockImplementation((b: Buffer) => b.toString())
   })
 
   it('persists tokens and reports authenticated on successful login', async () => {
@@ -83,5 +87,168 @@ describe('OperatorAuthService', () => {
   it('clears tokens on logout', async () => {
     await service.logout()
     expect(unlink).toHaveBeenCalledTimes(1)
+  })
+
+  it('fetchWorkflowTasks sends an authed GET with the idToken and returns items', async () => {
+    readFile.mockResolvedValue(Buffer.from(JSON.stringify({ idToken: 'idtok' })))
+    fetchMock.mockResolvedValue(response(200, { items: [{ workflowTaskId: 'wf_1', name: 'T' }] }))
+    const items = await service.fetchWorkflowTasks()
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${BASE}/me/workflow-tasks`,
+      expect.objectContaining({ method: 'GET', headers: { Authorization: 'Bearer idtok' } })
+    )
+    expect(items).toHaveLength(1)
+  })
+
+  it('fetchWorkflowTasks throws when not signed in', async () => {
+    readFile.mockRejectedValue(new Error('ENOENT'))
+    await expect(service.fetchWorkflowTasks()).rejects.toThrow('Not signed in')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('fetchWorkflowTask requests the per-id route', async () => {
+    readFile.mockResolvedValue(Buffer.from(JSON.stringify({ idToken: 'idtok' })))
+    fetchMock.mockResolvedValue(response(200, { workflowTaskId: 'wf_2', name: 'T2' }))
+    const task = await service.fetchWorkflowTask(evt, 'wf_2')
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${BASE}/me/workflow-tasks/wf_2`,
+      expect.objectContaining({ method: 'GET' })
+    )
+    expect(task.workflowTaskId).toBe('wf_2')
+  })
+
+  it('refreshes a near-expired idToken before fetching', async () => {
+    readFile.mockResolvedValue(
+      Buffer.from(JSON.stringify({ idToken: 'old', refreshToken: 'reftok', expiresIn: 3600, obtainedAt: 0 }))
+    )
+    fetchMock
+      .mockResolvedValueOnce(response(200, { accessToken: 'a2', idToken: 'new', expiresIn: 3600, tokenType: 'Bearer' }))
+      .mockResolvedValueOnce(response(200, { items: [] }))
+    await service.fetchWorkflowTasks()
+    expect(fetchMock).toHaveBeenCalledWith(`${BASE}/auth/refresh`, expect.objectContaining({ method: 'POST' }))
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      `${BASE}/me/workflow-tasks`,
+      expect.objectContaining({ headers: { Authorization: 'Bearer new' } })
+    )
+  })
+
+  it('refreshes and retries once when a request returns 401', async () => {
+    readFile.mockResolvedValue(
+      Buffer.from(JSON.stringify({ idToken: 'cur', refreshToken: 'reftok', expiresIn: 3600, obtainedAt: Date.now() }))
+    )
+    fetchMock
+      .mockResolvedValueOnce(response(401, {}))
+      .mockResolvedValueOnce(response(200, { accessToken: 'a', idToken: 'new', expiresIn: 3600, tokenType: 'Bearer' }))
+      .mockResolvedValueOnce(response(200, { items: [] }))
+    expect(await service.fetchWorkflowTasks()).toEqual([])
+    expect(fetchMock).toHaveBeenCalledWith(`${BASE}/auth/refresh`, expect.objectContaining({ method: 'POST' }))
+  })
+
+  it('runWorkflowTask throws when the inference endpoint is not configured', async () => {
+    const original = MPF_SERVER_CONFIG.INFERENCE_STREAM_URL
+    MPF_SERVER_CONFIG.INFERENCE_STREAM_URL = ''
+    try {
+      const request = { model: 'claude-sonnet', type: 'workflow_task' as const, messages: [] }
+      await expect(service.runWorkflowTask(evt, 'r1', request)).rejects.toThrow('not configured')
+      expect(fetchMock).not.toHaveBeenCalled()
+    } finally {
+      MPF_SERVER_CONFIG.INFERENCE_STREAM_URL = original
+    }
+  })
+
+  it('runWorkflowTask streams to the gateway using the access token, not the idToken', async () => {
+    readFile.mockResolvedValue(
+      Buffer.from(JSON.stringify({ accessToken: 'acc', idToken: 'idtok', expiresIn: 3600, obtainedAt: Date.now() }))
+    )
+    const reader = { read: vi.fn().mockResolvedValue({ done: true, value: undefined }) }
+    fetchMock.mockResolvedValue({ ok: true, status: 200, body: { getReader: () => reader } })
+    const request = { model: 'claude-sonnet', type: 'workflow_task' as const, messages: [] }
+    await service.runWorkflowTask(evt, 'r1', request)
+    expect(fetchMock).toHaveBeenCalledWith(
+      MPF_SERVER_CONFIG.INFERENCE_STREAM_URL,
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer acc' })
+      })
+    )
+  })
+
+  it('runWorkflowTask drops top_p when temperature is also set (Anthropic constraint)', async () => {
+    readFile.mockResolvedValue(
+      Buffer.from(JSON.stringify({ accessToken: 'acc', idToken: 'idtok', expiresIn: 3600, obtainedAt: Date.now() }))
+    )
+    const reader = { read: vi.fn().mockResolvedValue({ done: true, value: undefined }) }
+    fetchMock.mockResolvedValue({ ok: true, status: 200, body: { getReader: () => reader } })
+    const request = {
+      model: 'claude-sonnet',
+      type: 'workflow_task' as const,
+      messages: [],
+      inferenceConfig: { maxTokens: 4096, temperature: 0.7, topP: 0.9 }
+    }
+    await service.runWorkflowTask(evt, 'r1', request)
+    const sent = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body)
+    expect(sent.inferenceConfig).toEqual({ maxTokens: 4096, temperature: 0.7 })
+  })
+
+  it('createWorkflowTask POSTs the task body to /me/workflow-tasks', async () => {
+    readFile.mockResolvedValue(
+      Buffer.from(JSON.stringify({ idToken: 'idtok', expiresIn: 3600, obtainedAt: Date.now() }))
+    )
+    fetchMock.mockResolvedValue(response(201, { workflowTaskId: 'wf_9', name: 'T' }))
+    const createdTask = await service.createWorkflowTask(evt, { name: 'T' })
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${BASE}/me/workflow-tasks`,
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ name: 'T' }) })
+    )
+    expect(createdTask.workflowTaskId).toBe('wf_9')
+  })
+
+  it('updateWorkflowTask PATCHes the task body to the per-id route', async () => {
+    readFile.mockResolvedValue(
+      Buffer.from(JSON.stringify({ idToken: 'idtok', expiresIn: 3600, obtainedAt: Date.now() }))
+    )
+    fetchMock.mockResolvedValue(response(200, { workflowTaskId: 'wf_9', name: 'Renamed' }))
+    const updated = await service.updateWorkflowTask(evt, 'wf_9', { name: 'Renamed' })
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${BASE}/me/workflow-tasks/wf_9`,
+      expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ name: 'Renamed' }) })
+    )
+    expect(updated.name).toBe('Renamed')
+  })
+
+  it('getCurrentUserEmail reads the email claim from the idToken', async () => {
+    const payload = Buffer.from(JSON.stringify({ email: 'creator@x.com' })).toString('base64')
+    readFile.mockResolvedValue(Buffer.from(JSON.stringify({ idToken: `h.${payload}.s` })))
+    expect(await service.getCurrentUserEmail()).toBe('creator@x.com')
+  })
+
+  it('getCurrentUserEmail returns empty string when not signed in', async () => {
+    readFile.mockRejectedValue(new Error('ENOENT'))
+    expect(await service.getCurrentUserEmail()).toBe('')
+  })
+
+  it('fetchModels GETs /models and returns items', async () => {
+    readFile.mockResolvedValue(Buffer.from(JSON.stringify({ idToken: 'idtok' })))
+    fetchMock.mockResolvedValue(
+      response(200, {
+        items: [{ profileId: 'jp.anthropic.claude-sonnet-4-5-20250929-v1:0', label: 'Claude Sonnet 4.5 (Anthropic)', provider: 'Anthropic' }]
+      })
+    )
+    const models = await service.fetchModels()
+    expect(fetchMock).toHaveBeenCalledWith(`${BASE}/models`, expect.objectContaining({ method: 'GET' }))
+    expect(models).toHaveLength(1)
+    expect(models[0].profileId).toBe('jp.anthropic.claude-sonnet-4-5-20250929-v1:0')
+  })
+
+  it('isAdmin reads cognito:groups from the idToken', async () => {
+    const payload = Buffer.from(JSON.stringify({ 'cognito:groups': ['admin', 'operator'] })).toString('base64')
+    readFile.mockResolvedValue(Buffer.from(JSON.stringify({ idToken: `h.${payload}.s` })))
+    expect(await service.isAdmin()).toBe(true)
+  })
+
+  it('isAdmin is false for an operator-only token', async () => {
+    const payload = Buffer.from(JSON.stringify({ 'cognito:groups': ['operator'] })).toString('base64')
+    readFile.mockResolvedValue(Buffer.from(JSON.stringify({ idToken: `h.${payload}.s` })))
+    expect(await service.isAdmin()).toBe(false)
   })
 })

@@ -461,7 +461,32 @@ const api = {
     submitNewPassword: (email: string, newPassword: string, session: string) =>
       ipcRenderer.invoke(IpcChannel.OperatorAuth_SubmitNewPassword, email, newPassword, session),
     logout: () => ipcRenderer.invoke(IpcChannel.OperatorAuth_Logout),
-    getStatus: () => ipcRenderer.invoke(IpcChannel.OperatorAuth_GetStatus)
+    getStatus: () => ipcRenderer.invoke(IpcChannel.OperatorAuth_GetStatus),
+    isAdmin: (): Promise<boolean> => ipcRenderer.invoke(IpcChannel.OperatorAuth_IsAdmin),
+    getCurrentUserEmail: (): Promise<string> => ipcRenderer.invoke(IpcChannel.OperatorAuth_GetCurrentUserEmail)
+  },
+  workflowTasks: {
+    list: (): Promise<import('@shared/workflowTask').WorkflowTask[]> => ipcRenderer.invoke(IpcChannel.WorkflowTasks_List),
+    get: (id: string): Promise<import('@shared/workflowTask').WorkflowTask> =>
+      ipcRenderer.invoke(IpcChannel.WorkflowTasks_Get, id),
+    create: (
+      body: Partial<import('@shared/workflowTask').WorkflowTask>
+    ): Promise<import('@shared/workflowTask').WorkflowTask> => ipcRenderer.invoke(IpcChannel.WorkflowTasks_Create, body),
+    update: (
+      id: string,
+      body: Partial<import('@shared/workflowTask').WorkflowTask>
+    ): Promise<import('@shared/workflowTask').WorkflowTask> =>
+      ipcRenderer.invoke(IpcChannel.WorkflowTasks_Update, id, body),
+    listModels: (): Promise<import('@shared/workflowTask').ModelOption[]> =>
+      ipcRenderer.invoke(IpcChannel.WorkflowTasks_ListModels),
+    run: (runId: string, request: import('@shared/inference').InferenceRequest): Promise<void> =>
+      ipcRenderer.invoke(IpcChannel.WorkflowTasks_Run, runId, request),
+    onRunChunk: (callback: (chunk: import('@shared/inference').WorkflowRunChunk) => void): (() => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, chunk: import('@shared/inference').WorkflowRunChunk) =>
+        callback(chunk)
+      ipcRenderer.on(IpcChannel.WorkflowTasks_RunChunk, listener)
+      return () => ipcRenderer.off(IpcChannel.WorkflowTasks_RunChunk, listener)
+    }
   },
   cherryin: {
     saveToken: (accessToken: string, refreshToken?: string) =>

@@ -4,6 +4,7 @@ import { Sortable, useDndReorder } from '@renderer/components/dnd'
 import HorizontalScrollContainer from '@renderer/components/HorizontalScrollContainer'
 import { isLinux, isMac } from '@renderer/config/constant'
 import { allMinApps } from '@renderer/config/minapps'
+import { isTabHidden } from '@renderer/config/navVisibility'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useAuthState } from '@renderer/hooks/useAuthState'
 import { useFullscreen } from '@renderer/hooks/useFullscreen'
@@ -13,6 +14,7 @@ import { useNavVisibility } from '@renderer/hooks/useNavVisibility'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { getThemeModeLabel, getTitleLabel } from '@renderer/i18n/label'
 import UpdateAppButton from '@renderer/pages/home/components/UpdateAppButton'
+import { getWorkflowTaskName } from '@renderer/pages/workflow/workflowTaskNames'
 import tabsService from '@renderer/services/TabsService'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import type { Tab } from '@renderer/store/tabs'
@@ -38,6 +40,7 @@ import {
   Sparkle,
   Sun,
   Terminal,
+  Workflow,
   X
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo } from 'react'
@@ -90,6 +93,10 @@ const getTabIcon = (
     return <LayoutGrid size={14} />
   }
 
+  if (tabId.startsWith('workflow-task:')) {
+    return <Workflow size={14} />
+  }
+
   // TODO: Add TabId as type instead of string
   switch (tabId) {
     case 'home':
@@ -122,22 +129,7 @@ const getTabIcon = (
 }
 
 let lastSettingsPath = '/settings/provider'
-const specialTabs = ['launchpad', 'settings']
-
-// Maps a tab id to the nav-visibility key it belongs to, so hidden items
-// (e.g. the default Agents tab) are also dropped from the top tab bar.
-const TAB_ID_TO_NAV_KEY: Record<string, string> = {
-  agents: 'agents',
-  store: 'store',
-  paintings: 'paintings',
-  translate: 'translate',
-  apps: 'minapp',
-  knowledge: 'knowledge',
-  files: 'files',
-  code: 'code_tools',
-  notes: 'notes',
-  openclaw: 'openclaw'
-}
+const specialTabs = ['launchpad', 'workflow-launchpad', 'workflow-builder', 'settings']
 
 const TabsContainer: React.FC<TabsContainerProps> = ({ children }) => {
   const location = useLocation()
@@ -160,6 +152,10 @@ const TabsContainer: React.FC<TabsContainerProps> = ({ children }) => {
     // Handle minapp paths: /apps/appId -> apps:appId
     if (segments[1] === 'apps' && segments[2]) {
       return `apps:${segments[2]}`
+    }
+    // Workflow task paths: /workflow-task/id -> workflow-task:id (one tab per task)
+    if (segments[1] === 'workflow-task' && segments[2]) {
+      return `workflow-task:${segments[2]}`
     }
     return segments[1] // 获取第一个路径段作为 id
   }
@@ -185,6 +181,9 @@ const TabsContainer: React.FC<TabsContainerProps> = ({ children }) => {
 
       // Return app name if found, otherwise use fallback with appId
       return app ? app.name : `MinApp-${appId}`
+    }
+    if (tabId.startsWith('workflow-task:')) {
+      return getWorkflowTaskName(tabId.replace('workflow-task:', '')) ?? t('workflow.task.tab')
     }
     return getTitleLabel(tabId)
   }
@@ -233,6 +232,11 @@ const TabsContainer: React.FC<TabsContainerProps> = ({ children }) => {
     navigate('/launchpad')
   }
 
+  const handleOpenWorkflows = () => {
+    hideMinappPopup()
+    navigate('/workflow-launchpad')
+  }
+
   const handleSettingsClick = () => {
     hideMinappPopup()
     navigate(lastSettingsPath)
@@ -258,7 +262,7 @@ const TabsContainer: React.FC<TabsContainerProps> = ({ children }) => {
   }
 
   const visibleTabs = useMemo(
-    () => tabs.filter((tab) => !specialTabs.includes(tab.id) && !hidden.has(TAB_ID_TO_NAV_KEY[tab.id] ?? '')),
+    () => tabs.filter((tab) => !specialTabs.includes(tab.id) && !isTabHidden(tab.id, hidden)),
     [tabs, hidden]
   )
 
@@ -317,6 +321,13 @@ const TabsContainer: React.FC<TabsContainerProps> = ({ children }) => {
           <AddTabButton onClick={handleAddTab} className={classNames({ active: activeTabId === 'launchpad' })}>
             <PlusOutlined />
           </AddTabButton>
+          <Tooltip title={t('workflow.launchpad.title')} mouseEnterDelay={0.8} placement="bottom">
+            <AddTabButton
+              onClick={handleOpenWorkflows}
+              className={classNames({ active: activeTabId === 'workflow-launchpad' })}>
+              <Workflow size={15} />
+            </AddTabButton>
+          </Tooltip>
         </HorizontalScrollContainer>
         <RightButtonsContainer style={{ paddingRight: isLinux && useSystemTitleBar ? '12px' : undefined }}>
           <UpdateAppButton />

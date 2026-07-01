@@ -6061,5 +6061,38 @@
     "quit": "Quit",
     "show_window": "Show Window",
     "visualization": "Visualization"
+  },
+  "workflow": {
+    "builder": {
+      "add_field": "Add field",
+      "description": "Description",
+      "edit_title": "Edit workflow task",
+      "fields": "Fields",
+      "model": "Model",
+      "name": "Name",
+      "optional": "Optional",
+      "prompt_template": "Prompt template",
+      "required": "Required",
+      "save": "Save",
+      "saved": "Workflow task saved",
+      "system_prompt": "System prompt",
+      "test_run": "Test run",
+      "test_values": "Test values",
+      "title": "New workflow task",
+      "upload": "Save and upload",
+      "uploaded": "Workflow task uploaded"
+    },
+    "launchpad": {
+      "create": "Create",
+      "empty": "No workflow tasks are assigned to you yet.",
+      "title": "Workflow Tasks"
+    },
+    "task": {
+      "not_found": "Workflow task not found.",
+      "result": "Result",
+      "run": "Run",
+      "running": "Running…",
+      "tab": "Workflow"
+    }
   }
 }

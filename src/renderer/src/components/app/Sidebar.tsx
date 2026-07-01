@@ -30,7 +30,8 @@ import {
   Palette,
   Settings,
   Sparkle,
-  Sun
+  Sun,
+  Workflow
 } from 'lucide-react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -111,6 +112,13 @@ const Sidebar: FC = () => {
         )}
       </MainMenusContainer>
       <Menus>
+        <Tooltip title={t('workflow.launchpad.title')} mouseEnterDelay={0.8} placement="right">
+          <StyledLink onClick={() => to('/workflow-launchpad')}>
+            <Icon theme={theme} className={pathname === '/workflow-launchpad' && !minappShow ? 'active' : ''}>
+              <Workflow size={20} className="icon" />
+            </Icon>
+          </StyledLink>
+        </Tooltip>
         {!isHidden('theme') && (
           <Tooltip title={t('settings.theme.title') + ': ' + getThemeModeLabel(settedTheme)} placement="right">
             <Icon theme={theme} onClick={toggleTheme}>
